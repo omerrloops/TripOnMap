@@ -1,7 +1,7 @@
 'use client';
 
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import LocationModal from './LocationModal';
 import { supabase } from '../../lib/supabase';
 let L: any;
@@ -69,6 +69,7 @@ export default function Map() {
     const [isEditMode, setIsEditMode] = useState(false);
     const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [mapInstance, setMapInstance] = useState<any>(null);
+    const hasInitiallyCentered = useRef(false);
 
     // Center on Bulgaria
     const center: [number, number] = [42.7339, 25.4858];
@@ -107,6 +108,11 @@ export default function Map() {
                 (position) => {
                     const { latitude, longitude } = position.coords;
                     setCurrentLocation({ lat: latitude, lng: longitude });
+
+                    // Center map on initial location
+                    if (mapInstance) {
+                        mapInstance.setView([latitude, longitude], 13);
+                    }
                 },
                 (error) => {
                     console.error('Error getting location:', error);
@@ -134,7 +140,15 @@ export default function Map() {
                 navigator.geolocation.clearWatch(watchId);
             };
         }
-    }, []);
+    }, [mapInstance]);
+
+    // Center map when location is first obtained
+    useEffect(() => {
+        if (currentLocation && mapInstance && !hasInitiallyCentered.current) {
+            mapInstance.setView([currentLocation.lat, currentLocation.lng], 13);
+            hasInitiallyCentered.current = true;
+        }
+    }, [currentLocation, mapInstance]);
 
     const handleMapClick = (e: L.LeafletMouseEvent) => {
         setTempLocation({ lat: e.latlng.lat, lng: e.latlng.lng });
