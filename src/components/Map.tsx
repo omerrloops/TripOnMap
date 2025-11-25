@@ -59,7 +59,7 @@ function MapEvents({ onMapClick, setMap }: { onMapClick: (e: any) => void; setMa
 }
 
 export default function Map() {
-    type MarkerData = { lat: number; lng: number; id: string; description?: string; date?: string; color?: string; category?: string; photos?: { url: string; name: string }[] };
+    type MarkerData = { lat: number; lng: number; id: string; description?: string; date?: string; color?: string; category?: string; locationName?: string; photos?: { url: string; name: string }[] };
     const [markers, setMarkers] = useState<MarkerData[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [tempLocation, setTempLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -73,7 +73,7 @@ export default function Map() {
 
     // Center on Bulgaria
     const center: [number, number] = [42.7339, 25.4858];
-    const zoom = 8;
+    const zoom = 10; // More zoomed out view
 
     // Load existing locations from Supabase
     useEffect(() => {
@@ -92,6 +92,7 @@ export default function Map() {
                     date: loc.date,
                     color: loc.color,
                     category: loc.category,
+                    locationName: loc.location_name,
                     photos: loc.photos,
                 }));
                 setMarkers(loadedMarkers);
@@ -111,7 +112,7 @@ export default function Map() {
 
                     // Center map on initial location
                     if (mapInstance) {
-                        mapInstance.setView([latitude, longitude], 13);
+                        mapInstance.setView([latitude, longitude], 11); // Slightly zoomed out
                     }
                 },
                 (error) => {
@@ -145,7 +146,7 @@ export default function Map() {
     // Center map when location is first obtained
     useEffect(() => {
         if (currentLocation && mapInstance && !hasInitiallyCentered.current) {
-            mapInstance.setView([currentLocation.lat, currentLocation.lng], 13);
+            mapInstance.setView([currentLocation.lat, currentLocation.lng], 11); // Slightly zoomed out
             hasInitiallyCentered.current = true;
         }
     }, [currentLocation, mapInstance]);
@@ -156,7 +157,7 @@ export default function Map() {
     };
 
     const handleModalSubmit = async (data: any) => {
-        const { description, date, color, category, files, photoNames, lat, lng } = data;
+        const { description, date, color, category, locationName, files, photoNames, lat, lng } = data;
 
         // Handle edit mode
         if (isEditMode && editingMarker) {
@@ -191,6 +192,7 @@ export default function Map() {
                     date,
                     color,
                     category,
+                    location_name: locationName,
                     photos: allPhotos,
                 })
                 .eq('id', editingMarker.id);
@@ -203,7 +205,7 @@ export default function Map() {
                 setMarkers((prev) =>
                     prev.map((m) =>
                         m.id === editingMarker.id
-                            ? { ...m, description, date, color, category, photos: allPhotos }
+                            ? { ...m, description, date, color, category, locationName, photos: allPhotos }
                             : m
                     )
                 );
@@ -256,6 +258,7 @@ export default function Map() {
             date: dt,
             color: col,
             category: cat,
+            location_name: locationName,
             photos: uploadedPhotos,
         });
         if (insertError) {
@@ -528,6 +531,15 @@ export default function Map() {
                                 <h2 className="text-4xl font-serif text-amber-900 mb-2" style={{ fontFamily: 'Georgia, serif' }}>
                                     {selectedMemory.date}
                                 </h2>
+                                {selectedMemory.locationName && (
+                                    <p className="text-lg text-amber-700 mb-2 flex items-center justify-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                            <circle cx="12" cy="10" r="3" />
+                                        </svg>
+                                        {selectedMemory.locationName}
+                                    </p>
+                                )}
                                 <div className="w-24 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent mx-auto"></div>
                             </div>
 
@@ -630,6 +642,7 @@ export default function Map() {
                     description: editingMarker.description || '',
                     date: editingMarker.date || '',
                     category: editingMarker.category || 'attractions',
+                    locationName: editingMarker.locationName || '',
                     photos: editingMarker.photos || []
                 } : undefined}
                 isEditMode={isEditMode}

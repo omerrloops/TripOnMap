@@ -13,6 +13,7 @@ interface LocationModalProps {
         description: string;
         date: string;
         category: string;
+        locationName?: string;
         photos?: { url: string; name: string }[];
     };
     isEditMode?: boolean;
@@ -43,6 +44,45 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
     const [existingPhotos, setExistingPhotos] = useState<{ url: string; name: string }[]>(
         initialData?.photos || []
     );
+    const [locationName, setLocationName] = useState(initialData?.locationName || '');
+    const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+
+    // Fetch location name from coordinates
+    useEffect(() => {
+        const fetchLocationName = async () => {
+            if (!lat || !lng || initialData?.locationName) return;
+
+            setIsLoadingLocation(true);
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=14&addressdetails=1`
+                );
+                const data = await response.json();
+
+                // Extract meaningful location info
+                const address = data.address;
+                const parts = [];
+
+                if (address.city) parts.push(address.city);
+                else if (address.town) parts.push(address.town);
+                else if (address.village) parts.push(address.village);
+
+                if (address.state) parts.push(address.state);
+                if (address.country) parts.push(address.country);
+
+                const locationStr = parts.join(', ') || data.display_name;
+                setLocationName(locationStr);
+            } catch (error) {
+                console.error('Error fetching location name:', error);
+            } finally {
+                setIsLoadingLocation(false);
+            }
+        };
+
+        if (isOpen && !isEditMode) {
+            fetchLocationName();
+        }
+    }, [lat, lng, isOpen, isEditMode, initialData?.locationName]);
 
     // Update form when initialData changes
     useEffect(() => {
@@ -51,6 +91,7 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
             setDate(initialData.date || new Date().toISOString().split('T')[0]);
             setCategory((initialData.category as keyof typeof CATEGORIES) || 'attractions');
             setExistingPhotos(initialData.photos || []);
+            setLocationName(initialData.locationName || '');
         }
     }, [initialData]);
 
@@ -71,7 +112,7 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const color = CATEGORIES[category].color;
-        onSubmit({ description, date, files, photoNames, color, category, lat, lng, existingPhotos });
+        onSubmit({ description, date, files, photoNames, color, category, locationName, lat, lng, existingPhotos });
 
         // Reset form
         if (!isEditMode) {
@@ -81,6 +122,7 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
             setFiles([]);
             setPhotoNames([]);
             setExistingPhotos([]);
+            setLocationName('');
         }
         onClose();
     };
@@ -131,6 +173,18 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
                                 </button>
                             ))}
                         </div>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Location</label>
+                        <input
+                            type="text"
+                            value={locationName}
+                            onChange={(e) => setLocationName(e.target.value)}
+                            placeholder={isLoadingLocation ? "Loading location..." : "Enter location name"}
+                            className="w-full p-2 border rounded dark:bg-gray-700 dark:border-gray-600"
+                            disabled={isLoadingLocation}
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Auto-detected from GPS or enter manually</p>
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Description</label>
