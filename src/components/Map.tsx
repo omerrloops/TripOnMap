@@ -4,6 +4,8 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaf
 import { useState, useEffect, useRef } from 'react';
 import LocationModal from './LocationModal';
 import { supabase } from '../../lib/supabase';
+import MarkerClusterGroup from 'react-leaflet-cluster';
+
 let L: any;
 if (typeof window !== 'undefined') {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -410,97 +412,106 @@ export default function Map() {
                     />
                 )}
 
-                {markers.map((marker) => {
-                    // Use photo thumbnail if available, otherwise use category emoji
-                    const hasPhoto = marker.photos && marker.photos.length > 0;
-                    const photos = hasPhoto ? marker.photos!.slice(0, 5) : []; // Max 5 photos
-                    const photoUrl = hasPhoto ? marker.photos![0].url : '';
-                    const categoryEmoji = marker.category && CATEGORIES[marker.category as keyof typeof CATEGORIES]
-                        ? CATEGORIES[marker.category as keyof typeof CATEGORIES].emoji
-                        : '📍';
+                {/* Cluster markers when zoomed out */}
+                <MarkerClusterGroup
+                    chunkedLoading
+                    maxClusterRadius={60}
+                    spiderfyOnMaxZoom={true}
+                    showCoverageOnHover={false}
+                    zoomToBoundsOnClick={true}
+                >
+                    {markers.map((marker) => {
+                        // Use photo thumbnail if available, otherwise use category emoji
+                        const hasPhoto = marker.photos && marker.photos.length > 0;
+                        const photos = hasPhoto ? marker.photos!.slice(0, 5) : []; // Max 5 photos
+                        const photoUrl = hasPhoto ? marker.photos![0].url : '';
+                        const categoryEmoji = marker.category && CATEGORIES[marker.category as keyof typeof CATEGORIES]
+                            ? CATEGORIES[marker.category as keyof typeof CATEGORIES].emoji
+                            : '📍';
 
-                    // Generate fan of photos
-                    const photoFan = photos.map((photo, index) => {
-                        const rotation = (index - Math.floor(photos.length / 2)) * 15; // Spread photos with rotation
-                        const translateY = Math.abs(index - Math.floor(photos.length / 2)) * -5; // Slight vertical offset
-                        return `
-                            <div class="fan-photo" style="
-                                position: absolute;
-                                width: 60px;
-                                height: 60px;
-                                border-radius: 8px;
-                                border: 2px solid white;
-                                overflow: hidden;
-                                box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-                                transform: rotate(${rotation}deg) translateY(${translateY}px);
-                                transition: all 0.3s ease;
-                                opacity: 0;
-                                pointer-events: none;
-                                z-index: ${10 - index};
-                            ">
-                                <img src="${photo.url}" 
-                                     style="width: 100%; height: 100%; object-fit: cover;"
-                                     alt="Memory ${index + 1}"
-                                />
-                            </div>
-                        `;
-                    }).join('');
-
-                    const customIcon = L.divIcon({
-                        html: hasPhoto
-                            ? `<div class="photo-marker-container" style="position: relative; width: 50px; height: 50px;">
-                                <div class="photo-marker" style="
-                                    width: 50px; 
-                                    height: 50px; 
-                                    border-radius: 50%; 
-                                    border: 3px solid ${marker.color || '#ff0000'}; 
+                        // Generate fan of photos
+                        const photoFan = photos.map((photo, index) => {
+                            const rotation = (index - Math.floor(photos.length / 2)) * 15; // Spread photos with rotation
+                            const translateY = Math.abs(index - Math.floor(photos.length / 2)) * -5; // Slight vertical offset
+                            return `
+                                <div class="fan-photo" style="
+                                    position: absolute;
+                                    width: 60px;
+                                    height: 60px;
+                                    border-radius: 8px;
+                                    border: 2px solid white;
                                     overflow: hidden;
-                                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-                                    background: white;
+                                    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                                    transform: rotate(${rotation}deg) translateY(${translateY}px);
                                     transition: all 0.3s ease;
-                                    cursor: pointer;
-                                    position: relative;
-                                    z-index: 100;
-                                  ">
-                                    <img src="${photoUrl}" 
+                                    opacity: 0;
+                                    pointer-events: none;
+                                    z-index: ${10 - index};
+                                ">
+                                    <img src="${photo.url}" 
                                          style="width: 100%; height: 100%; object-fit: cover;"
-                                         alt="Memory"
+                                         alt="Memory ${index + 1}"
                                     />
                                 </div>
-                                ${photoFan}
-                              </div>`
-                            : `<div class="emoji-marker" style="
-                                width: 40px; 
-                                height: 40px; 
-                                border-radius: 50%; 
-                                border: 3px solid ${marker.color || '#ff0000'}; 
-                                background: white;
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                font-size: 20px;
-                                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-                                transition: all 0.3s ease;
-                                cursor: pointer;
-                              ">
-                                ${categoryEmoji}
-                              </div>`,
-                        className: '',
-                        iconSize: hasPhoto ? [50, 50] : [40, 40],
-                        iconAnchor: hasPhoto ? [25, 25] : [20, 20],
-                        popupAnchor: [0, hasPhoto ? -25 : -20],
-                    });
-                    return (
-                        <Marker
-                            key={marker.id}
-                            position={[marker.lat, marker.lng]}
-                            icon={customIcon}
-                            eventHandlers={{
-                                click: () => openMemory(marker),
-                            }}
-                        />
-                    );
-                })}
+                            `;
+                        }).join('');
+
+                        const customIcon = L.divIcon({
+                            html: hasPhoto
+                                ? `<div class="photo-marker-container" style="position: relative; width: 50px; height: 50px;">
+                                    <div class="photo-marker" style="
+                                        width: 50px; 
+                                        height: 50px; 
+                                        border-radius: 50%; 
+                                        border: 3px solid ${marker.color || '#ff0000'}; 
+                                        overflow: hidden;
+                                        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                        background: white;
+                                        transition: all 0.3s ease;
+                                        cursor: pointer;
+                                        position: relative;
+                                        z-index: 100;
+                                      ">
+                                        <img src="${photoUrl}" 
+                                             style="width: 100%; height: 100%; object-fit: cover;"
+                                             alt="Memory"
+                                        />
+                                    </div>
+                                    ${photoFan}
+                                  </div>`
+                                : `<div class="emoji-marker" style="
+                                    width: 40px; 
+                                    height: 40px; 
+                                    border-radius: 50%; 
+                                    border: 3px solid ${marker.color || '#ff0000'}; 
+                                    background: white;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 20px;
+                                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                    transition: all 0.3s ease;
+                                    cursor: pointer;
+                                  ">
+                                    ${categoryEmoji}
+                                  </div>`,
+                            className: '',
+                            iconSize: hasPhoto ? [50, 50] : [40, 40],
+                            iconAnchor: hasPhoto ? [25, 25] : [20, 20],
+                            popupAnchor: [0, hasPhoto ? -25 : -20],
+                        });
+                        return (
+                            <Marker
+                                key={marker.id}
+                                position={[marker.lat, marker.lng]}
+                                icon={customIcon}
+                                eventHandlers={{
+                                    click: () => openMemory(marker),
+                                }}
+                            />
+                        );
+                    })}
+                </MarkerClusterGroup>
             </MapContainer>
 
             {/* Quick Add Button */}

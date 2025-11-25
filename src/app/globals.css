@@ -198,3 +198,30 @@ body {
   z-index: 1000 !important;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4) !important;
 }
+
+/* Marker cluster styling */
+.marker-cluster-small,
+.marker-cluster-medium,
+.marker-cluster-large {
+  background-color: rgba(99, 102, 241, 0.6) !important;
+}
+
+.marker-cluster-small div,
+.marker-cluster-medium div,
+.marker-cluster-large div {
+  background-color: rgba(99, 102, 241, 0.8) !important;
+  color: white !important;
+  font-weight: bold !important;
+  font-size: 14px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.marker-cluster {
+  transition: all 0.3s ease !important;
+}
+
+.marker-cluster:hover {
+  transform: scale(1.2) !important;
+}
