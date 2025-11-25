@@ -236,7 +236,27 @@ export default function Map() {
             return;
         }
 
-        // Delete from Supabase
+        // Delete associated photos from storage
+        if (selectedMemory.photos && selectedMemory.photos.length > 0) {
+            for (const photo of selectedMemory.photos) {
+                // Extract file path from URL
+                // URL format: https://[project].supabase.co/storage/v1/object/public/trip_photos/[filepath]
+                const urlParts = photo.url.split('/trip_photos/');
+                if (urlParts.length > 1) {
+                    const filePath = urlParts[1];
+                    const { error: storageError } = await supabase.storage
+                        .from('trip_photos')
+                        .remove([filePath]);
+
+                    if (storageError) {
+                        console.error('Error deleting photo from storage:', storageError);
+                        // Continue with deletion even if photo removal fails
+                    }
+                }
+            }
+        }
+
+        // Delete from Supabase database
         const { error } = await supabase
             .from('locations')
             .delete()
