@@ -480,9 +480,7 @@ export default function Map() {
                         // Create fan-out HTML for hover state
                         const fanHTML = photos.map((url, index) => {
                             const rotation = (index - Math.floor(photos.length / 2)) * 15;
-                            // Calculate vertical offset to match single marker effect (popping up)
-                            const translateY = -70 - (Math.abs(index - Math.floor(photos.length / 2)) * 5);
-
+                            const translateY = Math.abs(index - Math.floor(photos.length / 2)) * -5;
                             return `
                                 <div class="cluster-fan-photo" style="
                                     --rotation: ${rotation}deg;
@@ -567,6 +565,8 @@ export default function Map() {
                                 const translateY = Math.abs(index - Math.floor(photos.length / 2)) * -5; // Slight vertical offset
                                 return `
                                 <div class="fan-photo" style="
+                                    --rotation: ${rotation}deg;
+                                    --translateY: ${translateY}px;
                                     position: absolute;
                                     width: 60px;
                                     height: 60px;
@@ -574,7 +574,6 @@ export default function Map() {
                                     border: 2px solid white;
                                     overflow: hidden;
                                     box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-                                    transform: rotate(${rotation}deg) translateY(${translateY}px);
                                     transition: all 0.3s ease;
                                     opacity: 0;
                                     pointer-events: none;

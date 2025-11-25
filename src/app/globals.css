@@ -168,29 +168,11 @@ body {
 }
 
 /* Fan out photos on hover */
+/* Fan out photos on hover */
 .photo-marker-container:hover .fan-photo {
   opacity: 1 !important;
   pointer-events: auto !important;
-}
-
-.photo-marker-container:hover .fan-photo:nth-child(2) {
-  transform: rotate(-30deg) translateY(-80px) !important;
-}
-
-.photo-marker-container:hover .fan-photo:nth-child(3) {
-  transform: rotate(-15deg) translateY(-75px) !important;
-}
-
-.photo-marker-container:hover .fan-photo:nth-child(4) {
-  transform: rotate(0deg) translateY(-70px) !important;
-}
-
-.photo-marker-container:hover .fan-photo:nth-child(5) {
-  transform: rotate(15deg) translateY(-75px) !important;
-}
-
-.photo-marker-container:hover .fan-photo:nth-child(6) {
-  transform: rotate(30deg) translateY(-80px) !important;
+  transform: rotate(var(--rotation)) translateY(var(--translateY)) !important;
 }
 
 .emoji-marker:hover {
