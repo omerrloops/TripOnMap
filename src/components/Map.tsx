@@ -477,19 +477,51 @@ export default function Map() {
                             `).join('')
                             : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 32px;">📍</div>`;
 
+                        // Create fan-out HTML for hover state
+                        const fanHTML = photos.map((url, index) => {
+                            const rotation = (index - Math.floor(photos.length / 2)) * 15;
+                            const translateY = Math.abs(index - Math.floor(photos.length / 2)) * -5;
+                            return `
+                                <div class="cluster-fan-photo" style="
+                                    --rotation: ${rotation}deg;
+                                    --translateY: ${translateY}px;
+                                    position: absolute;
+                                    width: 70px;
+                                    height: 70px;
+                                    border-radius: 8px;
+                                    border: 2px solid white;
+                                    overflow: hidden;
+                                    box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                                    transition: all 0.3s ease;
+                                    opacity: 0;
+                                    pointer-events: none;
+                                    z-index: ${10 - index};
+                                    left: -5px;
+                                    top: -5px;
+                                    transform: scale(0.5);
+                                ">
+                                    <img src="${url}" style="width: 100%; height: 100%; object-fit: cover;" />
+                                </div>
+                            `;
+                        }).join('');
+
                         return L.divIcon({
                             html: `
-                                <div style="
-                                    position: relative;
-                                    width: 60px;
-                                    height: 60px;
-                                    border-radius: 50%;
-                                    overflow: hidden;
-                                    border: 3px solid #6366f1;
-                                    background: white;
-                                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                                ">
-                                    ${photoHTML}
+                                <div class="cluster-container" style="position: relative; width: 60px; height: 60px;">
+                                    <div class="cluster-collage" style="
+                                        position: relative;
+                                        width: 60px;
+                                        height: 60px;
+                                        border-radius: 50%;
+                                        overflow: hidden;
+                                        border: 3px solid #6366f1;
+                                        background: white;
+                                        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                                        transition: all 0.3s ease;
+                                        z-index: 20;
+                                    ">
+                                        ${photoHTML}
+                                    </div>
                                     <div style="
                                         position: absolute;
                                         bottom: -5px;
@@ -506,7 +538,9 @@ export default function Map() {
                                         font-weight: bold;
                                         border: 2px solid white;
                                         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                        z-index: 30;
                                     ">${count}</div>
+                                    ${fanHTML}
                                 </div>
                             `,
                             className: 'custom-cluster-icon',
