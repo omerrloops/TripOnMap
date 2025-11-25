@@ -480,8 +480,8 @@ export default function Map() {
                         // Create fan-out HTML for hover state
                         const fanHTML = photos.map((url, index) => {
                             const rotation = (index - Math.floor(photos.length / 2)) * 15;
-                            // Pure rotation: keep photos centered behind marker ("fanning inside")
-                            const translateY = 0;
+                            // Medium pop-up: moves up enough to "open" but stays connected (~30-40px up)
+                            const translateY = -30 - (Math.abs(index - Math.floor(photos.length / 2)) * 5);
                             return `
                                 <div class="cluster-fan-photo" style="
                                     --rotation: ${rotation}deg;
@@ -563,8 +563,8 @@ export default function Map() {
                             // Generate fan of photos
                             const photoFan = photos.map((photo, index) => {
                                 const rotation = (index - Math.floor(photos.length / 2)) * 15;
-                                // Pure rotation: keep photos centered behind marker ("fanning inside")
-                                const translateY = 0;
+                                // Medium pop-up: moves up enough to "open" but stays connected (~30-40px up)
+                                const translateY = -30 - (Math.abs(index - Math.floor(photos.length / 2)) * 5);
                                 return `
                                 <div class="fan-photo" style="
                                     --rotation: ${rotation}deg;
