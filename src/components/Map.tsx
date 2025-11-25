@@ -43,12 +43,18 @@ if (L) {
 }
 
 // Component to handle map clicks
-function MapEvents({ onMapClick }: { onMapClick: (e: any) => void }) {
-    useMapEvents({
+function MapEvents({ onMapClick, setMap }: { onMapClick: (e: any) => void; setMap: (map: any) => void }) {
+    const map = useMapEvents({
         click: (e) => {
             onMapClick(e);
         },
     });
+
+    // Capture map instance
+    useEffect(() => {
+        setMap(map);
+    }, [map, setMap]);
+
     return null;
 }
 
@@ -61,6 +67,8 @@ export default function Map() {
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
     const [editingMarker, setEditingMarker] = useState<MarkerData | null>(null);
     const [isEditMode, setIsEditMode] = useState(false);
+    const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
+    const [mapInstance, setMapInstance] = useState<any>(null);
 
     // Center on Bulgaria
     const center: [number, number] = [42.7339, 25.4858];
@@ -290,6 +298,28 @@ export default function Map() {
         }
     };
 
+    const handleLocateMe = () => {
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    setCurrentLocation({ lat: latitude, lng: longitude });
+
+                    // Center map on current location
+                    if (mapInstance) {
+                        mapInstance.setView([latitude, longitude], 13);
+                    }
+                },
+                (error) => {
+                    console.error('Error getting location:', error);
+                    alert('Unable to get your location. Please enable location services.');
+                }
+            );
+        } else {
+            alert('Geolocation is not supported by your browser.');
+        }
+    };
+
     return (
         <>
             <MapContainer
@@ -302,7 +332,20 @@ export default function Map() {
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-                <MapEvents onMapClick={handleMapClick} />
+                <MapEvents onMapClick={handleMapClick} setMap={setMapInstance} />
+
+                {/* Current location marker */}
+                {currentLocation && L && (
+                    <Marker
+                        position={[currentLocation.lat, currentLocation.lng]}
+                        icon={L.divIcon({
+                            html: `<div style="width:20px; height:20px; background:#3b82f6; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(59,130,246,0.5);" class="pulse-marker"></div>`,
+                            className: '',
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10],
+                        })}
+                    />
+                )}
 
                 {markers.map((marker) => {
                     const customIcon = L.divIcon({
@@ -324,6 +367,18 @@ export default function Map() {
                     );
                 })}
             </MapContainer>
+
+            {/* Locate Me Button */}
+            <button
+                onClick={handleLocateMe}
+                className="fixed bottom-24 right-4 z-[1000] w-14 h-14 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all hover:scale-110"
+                title="Show my location"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <circle cx="12" cy="12" r="3" />
+                </svg>
+            </button>
 
             {/* Memory Book Modal */}
             {selectedMemory && (
