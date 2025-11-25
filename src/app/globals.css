@@ -159,3 +159,16 @@ body {
 .pulse-marker {
   animation: pulse 2s ease-in-out infinite;
 }
+
+/* Photo marker hover effects */
+.photo-marker:hover {
+  transform: scale(1.4) !important;
+  z-index: 1000 !important;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+.emoji-marker:hover {
+  transform: scale(1.3) !important;
+  z-index: 1000 !important;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4) !important;
+}

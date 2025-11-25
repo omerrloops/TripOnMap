@@ -411,12 +411,51 @@ export default function Map() {
                 )}
 
                 {markers.map((marker) => {
+                    // Use photo thumbnail if available, otherwise use category emoji
+                    const hasPhoto = marker.photos && marker.photos.length > 0;
+                    const photoUrl = hasPhoto ? marker.photos![0].url : '';
+                    const categoryEmoji = marker.category && CATEGORIES[marker.category as keyof typeof CATEGORIES]
+                        ? CATEGORIES[marker.category as keyof typeof CATEGORIES].emoji
+                        : '📍';
+
                     const customIcon = L.divIcon({
-                        html: `<div style="background:${marker.color || '#ff0000'}; width:24px; height:24px; border-radius:50%; border:2px solid white;"></div>`,
+                        html: hasPhoto
+                            ? `<div class="photo-marker" style="
+                                width: 50px; 
+                                height: 50px; 
+                                border-radius: 50%; 
+                                border: 3px solid ${marker.color || '#ff0000'}; 
+                                overflow: hidden;
+                                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                background: white;
+                                transition: all 0.3s ease;
+                                cursor: pointer;
+                              ">
+                                <img src="${photoUrl}" 
+                                     style="width: 100%; height: 100%; object-fit: cover;"
+                                     alt="Memory"
+                                />
+                              </div>`
+                            : `<div class="emoji-marker" style="
+                                width: 40px; 
+                                height: 40px; 
+                                border-radius: 50%; 
+                                border: 3px solid ${marker.color || '#ff0000'}; 
+                                background: white;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-size: 20px;
+                                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                transition: all 0.3s ease;
+                                cursor: pointer;
+                              ">
+                                ${categoryEmoji}
+                              </div>`,
                         className: '',
-                        iconSize: [24, 24],
-                        iconAnchor: [12, 12],
-                        popupAnchor: [0, -12],
+                        iconSize: hasPhoto ? [50, 50] : [40, 40],
+                        iconAnchor: hasPhoto ? [25, 25] : [20, 20],
+                        popupAnchor: [0, hasPhoto ? -25 : -20],
                     });
                     return (
                         <Marker
