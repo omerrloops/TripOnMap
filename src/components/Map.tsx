@@ -74,6 +74,7 @@ export default function Map() {
     const hasInitiallyCentered = useRef(false);
     const [showRoute, setShowRoute] = useState(true);
     const [timelineIndex, setTimelineIndex] = useState(-1); // -1 means show all
+    const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set(Object.keys(CATEGORIES)));
 
     // Center on Bulgaria
     const center: [number, number] = [42.7339, 25.4858];
@@ -440,20 +441,22 @@ export default function Map() {
                     showCoverageOnHover={false}
                     zoomToBoundsOnClick={true}
                 >
-                    {markers.map((marker) => {
-                        // Use photo thumbnail if available, otherwise use category emoji
-                        const hasPhoto = marker.photos && marker.photos.length > 0;
-                        const photos = hasPhoto ? marker.photos!.slice(0, 5) : []; // Max 5 photos
-                        const photoUrl = hasPhoto ? marker.photos![0].url : '';
-                        const categoryEmoji = marker.category && CATEGORIES[marker.category as keyof typeof CATEGORIES]
-                            ? CATEGORIES[marker.category as keyof typeof CATEGORIES].emoji
-                            : '📍';
+                    {markers
+                        .filter(marker => !marker.category || activeCategories.has(marker.category))
+                        .map((marker) => {
+                            // Use photo thumbnail if available, otherwise use category emoji
+                            const hasPhoto = marker.photos && marker.photos.length > 0;
+                            const photos = hasPhoto ? marker.photos!.slice(0, 5) : []; // Max 5 photos
+                            const photoUrl = hasPhoto ? marker.photos![0].url : '';
+                            const categoryEmoji = marker.category && CATEGORIES[marker.category as keyof typeof CATEGORIES]
+                                ? CATEGORIES[marker.category as keyof typeof CATEGORIES].emoji
+                                : '📍';
 
-                        // Generate fan of photos
-                        const photoFan = photos.map((photo, index) => {
-                            const rotation = (index - Math.floor(photos.length / 2)) * 15; // Spread photos with rotation
-                            const translateY = Math.abs(index - Math.floor(photos.length / 2)) * -5; // Slight vertical offset
-                            return `
+                            // Generate fan of photos
+                            const photoFan = photos.map((photo, index) => {
+                                const rotation = (index - Math.floor(photos.length / 2)) * 15; // Spread photos with rotation
+                                const translateY = Math.abs(index - Math.floor(photos.length / 2)) * -5; // Slight vertical offset
+                                return `
                                 <div class="fan-photo" style="
                                     position: absolute;
                                     width: 60px;
@@ -474,11 +477,11 @@ export default function Map() {
                                     />
                                 </div>
                             `;
-                        }).join('');
+                            }).join('');
 
-                        const customIcon = L.divIcon({
-                            html: hasPhoto
-                                ? `<div class="photo-marker-container" style="position: relative; width: 50px; height: 50px;">
+                            const customIcon = L.divIcon({
+                                html: hasPhoto
+                                    ? `<div class="photo-marker-container" style="position: relative; width: 50px; height: 50px;">
                                     <div class="photo-marker" style="
                                         width: 50px; 
                                         height: 50px; 
@@ -499,7 +502,7 @@ export default function Map() {
                                     </div>
                                     ${photoFan}
                                   </div>`
-                                : `<div class="emoji-marker" style="
+                                    : `<div class="emoji-marker" style="
                                     width: 40px; 
                                     height: 40px; 
                                     border-radius: 50%; 
@@ -515,22 +518,22 @@ export default function Map() {
                                   ">
                                     ${categoryEmoji}
                                   </div>`,
-                            className: '',
-                            iconSize: hasPhoto ? [50, 50] : [40, 40],
-                            iconAnchor: hasPhoto ? [25, 25] : [20, 20],
-                            popupAnchor: [0, hasPhoto ? -25 : -20],
-                        });
-                        return (
-                            <Marker
-                                key={marker.id}
-                                position={[marker.lat, marker.lng]}
-                                icon={customIcon}
-                                eventHandlers={{
-                                    click: () => openMemory(marker),
-                                }}
-                            />
-                        );
-                    })}
+                                className: '',
+                                iconSize: hasPhoto ? [50, 50] : [40, 40],
+                                iconAnchor: hasPhoto ? [25, 25] : [20, 20],
+                                popupAnchor: [0, hasPhoto ? -25 : -20],
+                            });
+                            return (
+                                <Marker
+                                    key={marker.id}
+                                    position={[marker.lat, marker.lng]}
+                                    icon={customIcon}
+                                    eventHandlers={{
+                                        click: () => openMemory(marker),
+                                    }}
+                                />
+                            );
+                        })}
                 </MarkerClusterGroup>
             </MapContainer>
 
@@ -616,6 +619,49 @@ export default function Map() {
                     </button>
                 </div>
             )}
+
+            {/* Category Filters */}
+            <div className="fixed top-20 right-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-lg shadow-xl p-4 max-w-xs">
+                <h3 className="text-sm font-semibold mb-3 text-gray-700">Filter by Category</h3>
+                <div className="flex flex-wrap gap-2">
+                    {Object.entries(CATEGORIES).map(([key, { emoji, label, color }]) => {
+                        const isActive = activeCategories.has(key);
+                        const count = markers.filter(m => m.category === key).length;
+
+                        return (
+                            <button
+                                key={key}
+                                onClick={() => {
+                                    const newCategories = new Set(activeCategories);
+                                    if (isActive) {
+                                        newCategories.delete(key);
+                                    } else {
+                                        newCategories.add(key);
+                                    }
+                                    setActiveCategories(newCategories);
+                                }}
+                                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm flex items-center gap-2 ${isActive
+                                        ? 'border-current shadow-md scale-105'
+                                        : 'border-gray-200 opacity-50 hover:opacity-75'
+                                    }`}
+                                style={{
+                                    borderColor: isActive ? color : undefined,
+                                    backgroundColor: isActive ? `${color}15` : undefined,
+                                }}
+                            >
+                                <span className="text-lg">{emoji}</span>
+                                <span className="font-medium">{count}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+                <button
+                    onClick={() => setActiveCategories(new Set(Object.keys(CATEGORIES)))}
+                    className="mt-3 w-full text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                >
+                    Show All
+                </button>
+            </div>
 
             {/* Memory Book Modal */}
             {selectedMemory && (
