@@ -17,10 +17,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <header className="text-center py-4 text-2xl font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-600 shadow-md animate-pulse">
+        <header className="fixed top-0 left-0 right-0 z-50 text-center py-4 text-xl sm:text-2xl font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-600 shadow-lg">
           Bulgaria Trip Map
         </header>
-        {children}
+        <div className="pt-16">
+          {children}
+        </div>
       </body>
     </html>
   );
