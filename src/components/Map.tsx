@@ -4,7 +4,6 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from '
 import { useState, useEffect, useRef } from 'react';
 import LocationModal from './LocationModal';
 import { supabase } from '../../lib/supabase';
-import MarkerClusterGroup from 'react-leaflet-cluster';
 
 let L: any;
 if (typeof window !== 'undefined') {
@@ -433,30 +432,24 @@ export default function Map() {
                     />
                 )}
 
-                {/* Cluster markers when zoomed out */}
-                <MarkerClusterGroup
-                    chunkedLoading
-                    maxClusterRadius={60}
-                    spiderfyOnMaxZoom={true}
-                    showCoverageOnHover={false}
-                    zoomToBoundsOnClick={true}
-                >
-                    {markers
-                        .filter(marker => !marker.category || activeCategories.has(marker.category))
-                        .map((marker) => {
-                            // Use photo thumbnail if available, otherwise use category emoji
-                            const hasPhoto = marker.photos && marker.photos.length > 0;
-                            const photos = hasPhoto ? marker.photos!.slice(0, 5) : []; // Max 5 photos
-                            const photoUrl = hasPhoto ? marker.photos![0].url : '';
-                            const categoryEmoji = marker.category && CATEGORIES[marker.category as keyof typeof CATEGORIES]
-                                ? CATEGORIES[marker.category as keyof typeof CATEGORIES].emoji
-                                : '📍';
 
-                            // Generate fan of photos
-                            const photoFan = photos.map((photo, index) => {
-                                const rotation = (index - Math.floor(photos.length / 2)) * 15; // Spread photos with rotation
-                                const translateY = Math.abs(index - Math.floor(photos.length / 2)) * -5; // Slight vertical offset
-                                return `
+                {/* Markers with photo fan-out */}
+                {markers
+                    .filter(marker => !marker.category || activeCategories.has(marker.category))
+                    .map((marker) => {
+                        // Use photo thumbnail if available, otherwise use category emoji
+                        const hasPhoto = marker.photos && marker.photos.length > 0;
+                        const photos = hasPhoto ? marker.photos!.slice(0, 5) : []; // Max 5 photos
+                        const photoUrl = hasPhoto ? marker.photos![0].url : '';
+                        const categoryEmoji = marker.category && CATEGORIES[marker.category as keyof typeof CATEGORIES]
+                            ? CATEGORIES[marker.category as keyof typeof CATEGORIES].emoji
+                            : '📍';
+
+                        // Generate fan of photos
+                        const photoFan = photos.map((photo, index) => {
+                            const rotation = (index - Math.floor(photos.length / 2)) * 15; // Spread photos with rotation
+                            const translateY = Math.abs(index - Math.floor(photos.length / 2)) * -5; // Slight vertical offset
+                            return `
                                 <div class="fan-photo" style="
                                     position: absolute;
                                     width: 60px;
@@ -477,11 +470,11 @@ export default function Map() {
                                     />
                                 </div>
                             `;
-                            }).join('');
+                        }).join('');
 
-                            const customIcon = L.divIcon({
-                                html: hasPhoto
-                                    ? `<div class="photo-marker-container" style="position: relative; width: 50px; height: 50px;">
+                        const customIcon = L.divIcon({
+                            html: hasPhoto
+                                ? `<div class="photo-marker-container" style="position: relative; width: 50px; height: 50px;">
                                     <div class="photo-marker" style="
                                         width: 50px; 
                                         height: 50px; 
@@ -502,7 +495,7 @@ export default function Map() {
                                     </div>
                                     ${photoFan}
                                   </div>`
-                                    : `<div class="emoji-marker" style="
+                                : `<div class="emoji-marker" style="
                                     width: 40px; 
                                     height: 40px; 
                                     border-radius: 50%; 
@@ -518,23 +511,22 @@ export default function Map() {
                                   ">
                                     ${categoryEmoji}
                                   </div>`,
-                                className: '',
-                                iconSize: hasPhoto ? [50, 50] : [40, 40],
-                                iconAnchor: hasPhoto ? [25, 25] : [20, 20],
-                                popupAnchor: [0, hasPhoto ? -25 : -20],
-                            });
-                            return (
-                                <Marker
-                                    key={marker.id}
-                                    position={[marker.lat, marker.lng]}
-                                    icon={customIcon}
-                                    eventHandlers={{
-                                        click: () => openMemory(marker),
-                                    }}
-                                />
-                            );
-                        })}
-                </MarkerClusterGroup>
+                            className: '',
+                            iconSize: hasPhoto ? [50, 50] : [40, 40],
+                            iconAnchor: hasPhoto ? [25, 25] : [20, 20],
+                            popupAnchor: [0, hasPhoto ? -25 : -20],
+                        });
+                        return (
+                            <Marker
+                                key={marker.id}
+                                position={[marker.lat, marker.lng]}
+                                icon={customIcon}
+                                eventHandlers={{
+                                    click: () => openMemory(marker),
+                                }}
+                            />
+                        );
+                    })}
             </MapContainer>
 
             {/* Quick Add Button */}
@@ -641,8 +633,8 @@ export default function Map() {
                                     setActiveCategories(newCategories);
                                 }}
                                 className={`px-3 py-2 rounded-lg border-2 transition-all text-sm flex items-center gap-2 ${isActive
-                                        ? 'border-current shadow-md scale-105'
-                                        : 'border-gray-200 opacity-50 hover:opacity-75'
+                                    ? 'border-current shadow-md scale-105'
+                                    : 'border-gray-200 opacity-50 hover:opacity-75'
                                     }`}
                                 style={{
                                     borderColor: isActive ? color : undefined,
