@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { X, Upload } from 'lucide-react';
 
 interface LocationModalProps {
@@ -9,6 +9,13 @@ interface LocationModalProps {
     onSubmit: (data: any) => void;
     lat: number;
     lng: number;
+    initialData?: {
+        description: string;
+        date: string;
+        category: string;
+        photos?: { url: string; name: string }[];
+    };
+    isEditMode?: boolean;
 }
 
 // Category definitions with colors and emojis
@@ -25,12 +32,27 @@ const CATEGORIES = {
     other: { label: 'Other', color: '#95A5A6', emoji: '📍' },
 };
 
-export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng }: LocationModalProps) {
-    const [description, setDescription] = useState('');
-    const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, initialData, isEditMode = false }: LocationModalProps) {
+    const [description, setDescription] = useState(initialData?.description || '');
+    const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
     const [files, setFiles] = useState<File[]>([]);
     const [photoNames, setPhotoNames] = useState<string[]>([]);
-    const [category, setCategory] = useState<keyof typeof CATEGORIES>('attractions');
+    const [category, setCategory] = useState<keyof typeof CATEGORIES>(
+        (initialData?.category as keyof typeof CATEGORIES) || 'attractions'
+    );
+    const [existingPhotos, setExistingPhotos] = useState<{ url: string; name: string }[]>(
+        initialData?.photos || []
+    );
+
+    // Update form when initialData changes
+    useEffect(() => {
+        if (initialData) {
+            setDescription(initialData.description || '');
+            setDate(initialData.date || new Date().toISOString().split('T')[0]);
+            setCategory((initialData.category as keyof typeof CATEGORIES) || 'attractions');
+            setExistingPhotos(initialData.photos || []);
+        }
+    }, [initialData]);
 
     if (!isOpen) return null;
 
@@ -49,15 +71,29 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng }: L
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const color = CATEGORIES[category].color;
-        onSubmit({ description, date, files, photoNames, color, category, lat, lng });
+        onSubmit({ description, date, files, photoNames, color, category, lat, lng, existingPhotos });
+
+        // Reset form
+        if (!isEditMode) {
+            setDescription('');
+            setDate(new Date().toISOString().split('T')[0]);
+            setCategory('attractions');
+            setFiles([]);
+            setPhotoNames([]);
+            setExistingPhotos([]);
+        }
         onClose();
+    };
+
+    const removeExistingPhoto = (index: number) => {
+        setExistingPhotos(prev => prev.filter((_, i) => i !== index));
     };
 
     return (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl w-full max-w-md m-4 max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold">Add Location</h2>
+                    <h2 className="text-xl font-bold">{isEditMode ? 'Edit Location' : 'Add Location'}</h2>
                     <button onClick={onClose} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
                         <X size={20} />
                     </button>
@@ -72,8 +108,8 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng }: L
                                     type="button"
                                     onClick={() => setCategory(key as keyof typeof CATEGORIES)}
                                     className={`p-3 rounded-lg border-2 transition-all text-left ${category === key
-                                            ? 'border-current shadow-lg scale-105'
-                                            : 'border-gray-200 hover:border-gray-300'
+                                        ? 'border-current shadow-lg scale-105'
+                                        : 'border-gray-200 hover:border-gray-300'
                                         }`}
                                     style={{
                                         borderColor: category === key ? color : undefined,
@@ -118,6 +154,34 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng }: L
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Photos</label>
+
+                        {/* Existing photos */}
+                        {existingPhotos.length > 0 && (
+                            <div className="mb-3">
+                                <p className="text-xs text-gray-500 mb-2">Existing photos:</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {existingPhotos.map((photo, idx) => (
+                                        <div key={idx} className="relative group">
+                                            <img
+                                                src={photo.url}
+                                                alt={photo.name}
+                                                className="w-full h-24 object-cover rounded border"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeExistingPhoto(idx)}
+                                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                            >
+                                                ×
+                                            </button>
+                                            <p className="text-xs text-gray-600 mt-1 truncate">{photo.name}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Upload new photos */}
                         <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                             <input
                                 type="file"
@@ -129,7 +193,9 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng }: L
                             />
                             <label htmlFor="photo-upload" className="cursor-pointer flex flex-col items-center">
                                 <Upload className="mb-2 text-gray-400" />
-                                <span className="text-sm text-gray-500">Click to upload photos</span>
+                                <span className="text-sm text-gray-500">
+                                    {isEditMode ? 'Add more photos' : 'Click to upload photos'}
+                                </span>
                             </label>
                         </div>
                         {files.map((file, idx) => (
@@ -149,7 +215,7 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng }: L
                         type="submit"
                         className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors"
                     >
-                        Save Location
+                        {isEditMode ? 'Update Location' : 'Save Location'}
                     </button>
                 </form>
             </div>

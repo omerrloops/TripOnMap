@@ -59,6 +59,8 @@ export default function Map() {
     const [tempLocation, setTempLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [selectedMemory, setSelectedMemory] = useState<MarkerData | null>(null);
     const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+    const [editingMarker, setEditingMarker] = useState<MarkerData | null>(null);
+    const [isEditMode, setIsEditMode] = useState(false);
 
     // Center on Bulgaria
     const center: [number, number] = [42.7339, 25.4858];
@@ -95,24 +97,84 @@ export default function Map() {
     };
 
     const handleModalSubmit = async (data: any) => {
-        if (!tempLocation) return;
         const { description, date, color, category, files, photoNames, lat, lng } = data;
+
+        // Handle edit mode
+        if (isEditMode && editingMarker) {
+            // Upload new photos to Supabase storage
+            const uploadedPhotos: { url: string; name: string }[] = [];
+            if (files && files.length > 0) {
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const fileName = photoNames && photoNames[i] ? photoNames[i] : file.name;
+                    const filePath = `${Date.now()}_${file.name}`;
+                    const { error: uploadError } = await supabase.storage
+                        .from('trip_photos')
+                        .upload(filePath, file);
+                    if (uploadError) {
+                        console.error('Photo upload error:', uploadError);
+                        continue;
+                    }
+                    const { data: urlData } = supabase.storage.from('trip_photos').getPublicUrl(filePath);
+                    uploadedPhotos.push({ url: urlData.publicUrl, name: fileName });
+                }
+            }
+
+            // Merge existing photos with new uploads
+            const existingPhotos = data.existingPhotos || editingMarker.photos || [];
+            const allPhotos = [...existingPhotos, ...uploadedPhotos];
+
+            // Update location in Supabase
+            const { error: updateError } = await supabase
+                .from('locations')
+                .update({
+                    description,
+                    date,
+                    color,
+                    category,
+                    photos: allPhotos,
+                })
+                .eq('id', editingMarker.id);
+
+            if (updateError) {
+                console.error('Error updating location:', updateError);
+            } else {
+                console.log('Location updated successfully');
+                // Update markers state
+                setMarkers((prev) =>
+                    prev.map((m) =>
+                        m.id === editingMarker.id
+                            ? { ...m, description, date, color, category, photos: allPhotos }
+                            : m
+                    )
+                );
+            }
+
+            setIsModalOpen(false);
+            setEditingMarker(null);
+            setIsEditMode(false);
+            return;
+        }
+
+        // Handle create mode
+        if (!tempLocation) return;
+        const { description: desc, date: dt, color: col, category: cat, files: fls, photoNames: pNames } = data;
         // Upload photos to Supabase storage
         const uploadedPhotos: { url: string; name: string }[] = [];
-        if (files && files.length > 0) {
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const fileName = photoNames && photoNames[i] ? photoNames[i] : file.name;
+        if (fls && fls.length > 0) {
+            for (let i = 0; i < fls.length; i++) {
+                const file = fls[i];
+                const fileName = pNames && pNames[i] ? pNames[i] : file.name;
                 const filePath = `${Date.now()}_${file.name}`;
-                const { error: uploadError, data: uploadData } = await supabase.storage
+                const { error: uploadError } = await supabase.storage
                     .from('trip_photos')
                     .upload(filePath, file);
                 if (uploadError) {
                     console.error('Photo upload error:', uploadError);
                     continue;
                 }
-                const { data } = supabase.storage.from('trip_photos').getPublicUrl(filePath);
-                uploadedPhotos.push({ url: data.publicUrl, name: fileName });
+                const { data: urlData } = supabase.storage.from('trip_photos').getPublicUrl(filePath);
+                uploadedPhotos.push({ url: urlData.publicUrl, name: fileName });
             }
         }
 
@@ -120,9 +182,10 @@ export default function Map() {
             lat: tempLocation.lat,
             lng: tempLocation.lng,
             id: Math.random().toString(36).substr(2, 9),
-            description,
-            date,
-            color,
+            description: desc,
+            date: dt,
+            color: col,
+            category: cat,
         };
         setMarkers((prev) => [...prev, newMarker]);
 
@@ -130,11 +193,11 @@ export default function Map() {
         const { error: insertError } = await supabase.from('locations').insert({
             lat: tempLocation.lat,
             lng: tempLocation.lng,
-            description,
-            date,
-            color,
-            category,
-            photos: uploadedPhotos, // assume JSON column
+            description: desc,
+            date: dt,
+            color: col,
+            category: cat,
+            photos: uploadedPhotos,
         });
         if (insertError) {
             console.error('Error inserting location:', insertError);
@@ -154,6 +217,15 @@ export default function Map() {
     const closeMemory = () => {
         setSelectedMemory(null);
         setCurrentPhotoIndex(0);
+    };
+
+    const handleEditMemory = () => {
+        if (selectedMemory) {
+            setEditingMarker(selectedMemory);
+            setIsEditMode(true);
+            setIsModalOpen(true);
+            setSelectedMemory(null);
+        }
     };
 
     const nextPhoto = () => {
@@ -219,6 +291,18 @@ export default function Map() {
                             boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.5)',
                         }}
                     >
+                        {/* Edit button */}
+                        <button
+                            onClick={handleEditMemory}
+                            className="absolute top-4 right-16 z-10 w-10 h-10 flex items-center justify-center bg-white/80 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110"
+                            title="Edit this memory"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700">
+                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                                <path d="m15 5 4 4" />
+                            </svg>
+                        </button>
+
                         {/* Close button */}
                         <button
                             onClick={closeMemory}
@@ -342,15 +426,24 @@ export default function Map() {
                 </div>
             )}
 
-            {tempLocation && (
-                <LocationModal
-                    isOpen={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
-                    onSubmit={handleModalSubmit}
-                    lat={tempLocation.lat}
-                    lng={tempLocation.lng}
-                />
-            )}
+            <LocationModal
+                isOpen={isModalOpen}
+                onClose={() => {
+                    setIsModalOpen(false);
+                    setEditingMarker(null);
+                    setIsEditMode(false);
+                }}
+                onSubmit={handleModalSubmit}
+                lat={editingMarker?.lat || tempLocation?.lat || 0}
+                lng={editingMarker?.lng || tempLocation?.lng || 0}
+                initialData={editingMarker ? {
+                    description: editingMarker.description || '',
+                    date: editingMarker.date || '',
+                    category: editingMarker.category || 'attractions',
+                    photos: editingMarker.photos || []
+                } : undefined}
+                isEditMode={isEditMode}
+            />
         </>
     );
 }
