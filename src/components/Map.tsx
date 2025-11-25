@@ -1,6 +1,6 @@
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from 'react-leaflet';
 import { useState, useEffect, useRef } from 'react';
 import LocationModal from './LocationModal';
 import { supabase } from '../../lib/supabase';
@@ -72,6 +72,8 @@ export default function Map() {
     const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [mapInstance, setMapInstance] = useState<any>(null);
     const hasInitiallyCentered = useRef(false);
+    const [showRoute, setShowRoute] = useState(true);
+    const [timelineIndex, setTimelineIndex] = useState(-1); // -1 means show all
 
     // Center on Bulgaria
     const center: [number, number] = [42.7339, 25.4858];
@@ -412,6 +414,24 @@ export default function Map() {
                     />
                 )}
 
+                {/* Route line connecting markers chronologically */}
+                {showRoute && markers.length > 1 && (
+                    <Polyline
+                        positions={markers
+                            .sort((a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime())
+                            .slice(0, timelineIndex === -1 ? markers.length : timelineIndex + 1)
+                            .map(m => [m.lat, m.lng])}
+                        pathOptions={{
+                            color: '#6366f1',
+                            weight: 3,
+                            opacity: 0.7,
+                            dashArray: '10, 10',
+                            lineCap: 'round',
+                            lineJoin: 'round',
+                        }}
+                    />
+                )}
+
                 {/* Cluster markers when zoomed out */}
                 <MarkerClusterGroup
                     chunkedLoading
@@ -537,6 +557,65 @@ export default function Map() {
                     <circle cx="12" cy="12" r="3" />
                 </svg>
             </button>
+
+            {/* Route Toggle Button */}
+            <button
+                onClick={() => setShowRoute(!showRoute)}
+                className={`fixed bottom-24 right-20 z-[1000] w-14 h-14 flex items-center justify-center ${showRoute ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-600 hover:bg-gray-700'} text-white rounded-full shadow-lg transition-all hover:scale-110`}
+                title={showRoute ? "Hide route" : "Show route"}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                    <path d="M21 3v5h-5" />
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                    <path d="M3 21v-5h5" />
+                </svg>
+            </button>
+
+            {/* Timeline Slider */}
+            {markers.length > 1 && (
+                <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur-sm rounded-full shadow-xl px-6 py-3 flex items-center gap-4 max-w-2xl">
+                    <button
+                        onClick={() => setTimelineIndex(Math.max(-1, timelineIndex - 1))}
+                        className="p-2 hover:bg-gray-100 rounded-full transition"
+                        disabled={timelineIndex === -1}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                    </button>
+
+                    <div className="flex-1 flex flex-col gap-1">
+                        <input
+                            type="range"
+                            min="-1"
+                            max={markers.length - 1}
+                            value={timelineIndex}
+                            onChange={(e) => setTimelineIndex(parseInt(e.target.value))}
+                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+                            style={{
+                                background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${((timelineIndex + 1) / markers.length) * 100}%, #e5e7eb ${((timelineIndex + 1) / markers.length) * 100}%, #e5e7eb 100%)`
+                            }}
+                        />
+                        <div className="text-xs text-gray-600 text-center">
+                            {timelineIndex === -1
+                                ? `All ${markers.length} events`
+                                : `Event ${timelineIndex + 1} of ${markers.length} - ${markers.sort((a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime())[timelineIndex]?.date}`
+                            }
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={() => setTimelineIndex(Math.min(markers.length - 1, timelineIndex + 1))}
+                        className="p-2 hover:bg-gray-100 rounded-full transition"
+                        disabled={timelineIndex === markers.length - 1}
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                    </button>
+                </div>
+            )}
 
             {/* Memory Book Modal */}
             {selectedMemory && (
