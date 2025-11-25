@@ -413,28 +413,61 @@ export default function Map() {
                 {markers.map((marker) => {
                     // Use photo thumbnail if available, otherwise use category emoji
                     const hasPhoto = marker.photos && marker.photos.length > 0;
+                    const photos = hasPhoto ? marker.photos!.slice(0, 5) : []; // Max 5 photos
                     const photoUrl = hasPhoto ? marker.photos![0].url : '';
                     const categoryEmoji = marker.category && CATEGORIES[marker.category as keyof typeof CATEGORIES]
                         ? CATEGORIES[marker.category as keyof typeof CATEGORIES].emoji
                         : '📍';
 
+                    // Generate fan of photos
+                    const photoFan = photos.map((photo, index) => {
+                        const rotation = (index - Math.floor(photos.length / 2)) * 15; // Spread photos with rotation
+                        const translateY = Math.abs(index - Math.floor(photos.length / 2)) * -5; // Slight vertical offset
+                        return `
+                            <div class="fan-photo" style="
+                                position: absolute;
+                                width: 60px;
+                                height: 60px;
+                                border-radius: 8px;
+                                border: 2px solid white;
+                                overflow: hidden;
+                                box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+                                transform: rotate(${rotation}deg) translateY(${translateY}px);
+                                transition: all 0.3s ease;
+                                opacity: 0;
+                                pointer-events: none;
+                                z-index: ${10 - index};
+                            ">
+                                <img src="${photo.url}" 
+                                     style="width: 100%; height: 100%; object-fit: cover;"
+                                     alt="Memory ${index + 1}"
+                                />
+                            </div>
+                        `;
+                    }).join('');
+
                     const customIcon = L.divIcon({
                         html: hasPhoto
-                            ? `<div class="photo-marker" style="
-                                width: 50px; 
-                                height: 50px; 
-                                border-radius: 50%; 
-                                border: 3px solid ${marker.color || '#ff0000'}; 
-                                overflow: hidden;
-                                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-                                background: white;
-                                transition: all 0.3s ease;
-                                cursor: pointer;
-                              ">
-                                <img src="${photoUrl}" 
-                                     style="width: 100%; height: 100%; object-fit: cover;"
-                                     alt="Memory"
-                                />
+                            ? `<div class="photo-marker-container" style="position: relative; width: 50px; height: 50px;">
+                                <div class="photo-marker" style="
+                                    width: 50px; 
+                                    height: 50px; 
+                                    border-radius: 50%; 
+                                    border: 3px solid ${marker.color || '#ff0000'}; 
+                                    overflow: hidden;
+                                    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                                    background: white;
+                                    transition: all 0.3s ease;
+                                    cursor: pointer;
+                                    position: relative;
+                                    z-index: 100;
+                                  ">
+                                    <img src="${photoUrl}" 
+                                         style="width: 100%; height: 100%; object-fit: cover;"
+                                         alt="Memory"
+                                    />
+                                </div>
+                                ${photoFan}
                               </div>`
                             : `<div class="emoji-marker" style="
                                 width: 40px; 

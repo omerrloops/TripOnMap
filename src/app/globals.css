@@ -161,10 +161,36 @@ body {
 }
 
 /* Photo marker hover effects */
-.photo-marker:hover {
-  transform: scale(1.4) !important;
+.photo-marker-container:hover .photo-marker {
+  transform: scale(1.2) !important;
   z-index: 1000 !important;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Fan out photos on hover */
+.photo-marker-container:hover .fan-photo {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.photo-marker-container:hover .fan-photo:nth-child(2) {
+  transform: rotate(-30deg) translateY(-80px) !important;
+}
+
+.photo-marker-container:hover .fan-photo:nth-child(3) {
+  transform: rotate(-15deg) translateY(-75px) !important;
+}
+
+.photo-marker-container:hover .fan-photo:nth-child(4) {
+  transform: rotate(0deg) translateY(-70px) !important;
+}
+
+.photo-marker-container:hover .fan-photo:nth-child(5) {
+  transform: rotate(15deg) translateY(-75px) !important;
+}
+
+.photo-marker-container:hover .fan-photo:nth-child(6) {
+  transform: rotate(30deg) translateY(-80px) !important;
 }
 
 .emoji-marker:hover {
