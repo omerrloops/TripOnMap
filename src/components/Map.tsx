@@ -4,6 +4,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from '
 import { useState, useEffect, useRef } from 'react';
 import LocationModal from './LocationModal';
 import { supabase } from '../../lib/supabase';
+import MarkerClusterGroup from 'react-leaflet-cluster';
 
 let L: any;
 if (typeof window !== 'undefined') {
@@ -433,23 +434,103 @@ export default function Map() {
                 )}
 
 
-                {/* Markers with photo fan-out */}
-                {markers
-                    .filter(marker => !marker.category || activeCategories.has(marker.category))
-                    .map((marker) => {
-                        // Use photo thumbnail if available, otherwise use category emoji
-                        const hasPhoto = marker.photos && marker.photos.length > 0;
-                        const photos = hasPhoto ? marker.photos!.slice(0, 5) : []; // Max 5 photos
-                        const photoUrl = hasPhoto ? marker.photos![0].url : '';
-                        const categoryEmoji = marker.category && CATEGORIES[marker.category as keyof typeof CATEGORIES]
-                            ? CATEGORIES[marker.category as keyof typeof CATEGORIES].emoji
-                            : '📍';
+                {/* Markers with photo fan-out and clustering */}
+                <MarkerClusterGroup
+                    chunkedLoading
+                    maxClusterRadius={60}
+                    spiderfyOnMaxZoom={true}
+                    showCoverageOnHover={false}
+                    zoomToBoundsOnClick={true}
+                    iconCreateFunction={(cluster: any) => {
+                        const childMarkers = cluster.getAllChildMarkers();
+                        const count = childMarkers.length;
 
-                        // Generate fan of photos
-                        const photoFan = photos.map((photo, index) => {
-                            const rotation = (index - Math.floor(photos.length / 2)) * 15; // Spread photos with rotation
-                            const translateY = Math.abs(index - Math.floor(photos.length / 2)) * -5; // Slight vertical offset
-                            return `
+                        // Collect up to 5 photos, one from each event
+                        const photos: string[] = [];
+                        for (const child of childMarkers) {
+                            if (photos.length >= 5) break;
+                            const markerData = markers.find(m =>
+                                m.lat === child.getLatLng().lat && m.lng === child.getLatLng().lng
+                            );
+                            if (markerData?.photos && markerData.photos.length > 0) {
+                                photos.push(markerData.photos[0].url);
+                            }
+                        }
+
+                        // Create photo collage HTML
+                        const photoHTML = photos.length > 0
+                            ? photos.map((url, i) => `
+                                <div style="
+                                    position: absolute;
+                                    width: ${photos.length === 1 ? '100%' : '50%'};
+                                    height: ${photos.length <= 2 ? '100%' : '50%'};
+                                    ${i === 0 ? 'top: 0; left: 0;' : ''}
+                                    ${i === 1 && photos.length === 2 ? 'top: 0; right: 0;' : ''}
+                                    ${i === 1 && photos.length > 2 ? 'top: 0; right: 0;' : ''}
+                                    ${i === 2 ? 'bottom: 0; left: 0;' : ''}
+                                    ${i === 3 ? 'bottom: 0; right: 0;' : ''}
+                                    ${i === 4 ? 'bottom: 0; left: 25%; width: 50%;' : ''}
+                                    overflow: hidden;
+                                ">
+                                    <img src="${url}" style="width: 100%; height: 100%; object-fit: cover;" />
+                                </div>
+                            `).join('')
+                            : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 32px;">📍</div>`;
+
+                        return L.divIcon({
+                            html: `
+                                <div style="
+                                    position: relative;
+                                    width: 60px;
+                                    height: 60px;
+                                    border-radius: 50%;
+                                    overflow: hidden;
+                                    border: 3px solid #6366f1;
+                                    background: white;
+                                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                                ">
+                                    ${photoHTML}
+                                    <div style="
+                                        position: absolute;
+                                        bottom: -5px;
+                                        right: -5px;
+                                        background: #6366f1;
+                                        color: white;
+                                        border-radius: 50%;
+                                        width: 24px;
+                                        height: 24px;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        font-size: 12px;
+                                        font-weight: bold;
+                                        border: 2px solid white;
+                                        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+                                    ">${count}</div>
+                                </div>
+                            `,
+                            className: 'custom-cluster-icon',
+                            iconSize: [60, 60],
+                            iconAnchor: [30, 30],
+                        });
+                    }}
+                >
+                    {markers
+                        .filter(marker => !marker.category || activeCategories.has(marker.category))
+                        .map((marker) => {
+                            // Use photo thumbnail if available, otherwise use category emoji
+                            const hasPhoto = marker.photos && marker.photos.length > 0;
+                            const photos = hasPhoto ? marker.photos!.slice(0, 5) : []; // Max 5 photos
+                            const photoUrl = hasPhoto ? marker.photos![0].url : '';
+                            const categoryEmoji = marker.category && CATEGORIES[marker.category as keyof typeof CATEGORIES]
+                                ? CATEGORIES[marker.category as keyof typeof CATEGORIES].emoji
+                                : '📍';
+
+                            // Generate fan of photos
+                            const photoFan = photos.map((photo, index) => {
+                                const rotation = (index - Math.floor(photos.length / 2)) * 15; // Spread photos with rotation
+                                const translateY = Math.abs(index - Math.floor(photos.length / 2)) * -5; // Slight vertical offset
+                                return `
                                 <div class="fan-photo" style="
                                     position: absolute;
                                     width: 60px;
@@ -470,11 +551,11 @@ export default function Map() {
                                     />
                                 </div>
                             `;
-                        }).join('');
+                            }).join('');
 
-                        const customIcon = L.divIcon({
-                            html: hasPhoto
-                                ? `<div class="photo-marker-container" style="position: relative; width: 50px; height: 50px;">
+                            const customIcon = L.divIcon({
+                                html: hasPhoto
+                                    ? `<div class="photo-marker-container" style="position: relative; width: 50px; height: 50px;">
                                     <div class="photo-marker" style="
                                         width: 50px; 
                                         height: 50px; 
@@ -495,7 +576,7 @@ export default function Map() {
                                     </div>
                                     ${photoFan}
                                   </div>`
-                                : `<div class="emoji-marker" style="
+                                    : `<div class="emoji-marker" style="
                                     width: 40px; 
                                     height: 40px; 
                                     border-radius: 50%; 
@@ -511,22 +592,23 @@ export default function Map() {
                                   ">
                                     ${categoryEmoji}
                                   </div>`,
-                            className: '',
-                            iconSize: hasPhoto ? [50, 50] : [40, 40],
-                            iconAnchor: hasPhoto ? [25, 25] : [20, 20],
-                            popupAnchor: [0, hasPhoto ? -25 : -20],
-                        });
-                        return (
-                            <Marker
-                                key={marker.id}
-                                position={[marker.lat, marker.lng]}
-                                icon={customIcon}
-                                eventHandlers={{
-                                    click: () => openMemory(marker),
-                                }}
-                            />
-                        );
-                    })}
+                                className: '',
+                                iconSize: hasPhoto ? [50, 50] : [40, 40],
+                                iconAnchor: hasPhoto ? [25, 25] : [20, 20],
+                                popupAnchor: [0, hasPhoto ? -25 : -20],
+                            });
+                            return (
+                                <Marker
+                                    key={marker.id}
+                                    position={[marker.lat, marker.lng]}
+                                    icon={customIcon}
+                                    eventHandlers={{
+                                        click: () => openMemory(marker),
+                                    }}
+                                />
+                            );
+                        })}
+                </MarkerClusterGroup>
             </MapContainer>
 
             {/* Quick Add Button */}
