@@ -1,7 +1,7 @@
 'use client';
 
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from 'react-leaflet';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import LocationModal from './LocationModal';
 import { supabase } from '../../lib/supabase';
 import MarkerClusterGroup from 'react-leaflet-cluster';
@@ -59,8 +59,19 @@ function MapEvents({ onMapClick, setMap }: { onMapClick: (e: any) => void; setMa
     return null;
 }
 
+type MarkerData = {
+    lat: number;
+    lng: number;
+    id: string;
+    description?: string;
+    date?: string;
+    color?: string;
+    category?: string;
+    locationName?: string;
+    photos?: { url: string; name: string }[]
+};
+
 export default function Map() {
-    type MarkerData = { lat: number; lng: number; id: string; description?: string; date?: string; color?: string; category?: string; locationName?: string; photos?: { url: string; name: string }[] };
     const [markers, setMarkers] = useState<MarkerData[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [tempLocation, setTempLocation] = useState<{ lat: number; lng: number } | null>(null);
@@ -75,9 +86,10 @@ export default function Map() {
     const [timelineIndex, setTimelineIndex] = useState(-1); // -1 means show all
     const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set(Object.keys(CATEGORIES)));
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+    const [isLoadingMarkers, setIsLoadingMarkers] = useState(true);
 
     // Calculate initial center and zoom from markers
-    const getInitialView = () => {
+    const { center, zoom } = useMemo(() => {
         if (markers.length === 0) {
             return { center: [42.7339, 25.4858] as [number, number], zoom: 10 };
         }
@@ -87,9 +99,7 @@ export default function Map() {
         const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
         const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
         return { center: [centerLat, centerLng] as [number, number], zoom: 10 };
-    };
-
-    const { center, zoom } = getInitialView();
+    }, [markers]);
 
     // Load existing locations from Supabase
     useEffect(() => {
@@ -112,6 +122,7 @@ export default function Map() {
                     photos: loc.photos,
                 }));
                 setMarkers(loadedMarkers);
+                setIsLoadingMarkers(false);
             }
         };
         fetchLocations();
@@ -410,67 +421,75 @@ export default function Map() {
 
     return (
         <>
-            <MapContainer
-                center={center}
-                zoom={zoom}
-                scrollWheelZoom={true}
-                className="w-full h-full"
-            >
-                <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <MapEvents onMapClick={handleMapClick} setMap={setMapInstance} />
-
-
-
-                {/* Route line connecting markers chronologically */}
-                {showRoute && markers.length > 1 && (
-                    <Polyline
-                        positions={markers
-                            .sort((a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime())
-                            .slice(0, timelineIndex === -1 ? markers.length : timelineIndex + 1)
-                            .map(m => [m.lat, m.lng])}
-                        pathOptions={{
-                            color: '#6366f1',
-                            weight: 3,
-                            opacity: 0.7,
-                            dashArray: '10, 10',
-                            lineCap: 'round',
-                            lineJoin: 'round',
-                        }}
+            {isLoadingMarkers ? (
+                <div className="w-full h-screen flex items-center justify-center bg-gray-100">
+                    <div className="text-center">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+                        <p className="text-gray-600">Loading map...</p>
+                    </div>
+                </div>
+            ) : (
+                <MapContainer
+                    center={center}
+                    zoom={zoom}
+                    scrollWheelZoom={true}
+                    className="w-full h-full"
+                >
+                    <TileLayer
+                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
-                )}
+                    <MapEvents onMapClick={handleMapClick} setMap={setMapInstance} />
 
 
-                {/* Markers with photo fan-out and clustering */}
-                <MarkerClusterGroup
-                    chunkedLoading
-                    animate={false}
-                    animateAddingMarkers={false}
-                    maxClusterRadius={60}
-                    spiderfyOnMaxZoom={false}
-                    showCoverageOnHover={false}
-                    zoomToBoundsOnClick={false}
-                    iconCreateFunction={(cluster: any) => {
-                        const childMarkers = cluster.getAllChildMarkers();
-                        const count = childMarkers.length;
 
-                        // Collect up to 5 photos, one from each event
-                        const photos: string[] = [];
-                        for (const child of childMarkers) {
-                            if (photos.length >= 5) break;
-                            const markerData = markers.find(m =>
-                                m.lat === child.getLatLng().lat && m.lng === child.getLatLng().lng
-                            );
-                            if (markerData?.photos && markerData.photos.length > 0) {
-                                photos.push(markerData.photos[0].url);
+                    {/* Route line connecting markers chronologically */}
+                    {showRoute && markers.length > 1 && (
+                        <Polyline
+                            positions={markers
+                                .sort((a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime())
+                                .slice(0, timelineIndex === -1 ? markers.length : timelineIndex + 1)
+                                .map(m => [m.lat, m.lng])}
+                            pathOptions={{
+                                color: '#6366f1',
+                                weight: 3,
+                                opacity: 0.7,
+                                dashArray: '10, 10',
+                                lineCap: 'round',
+                                lineJoin: 'round',
+                            }}
+                        />
+                    )}
+
+
+                    {/* Markers with photo fan-out and clustering */}
+                    <MarkerClusterGroup
+                        chunkedLoading
+                        animate={false}
+                        animateAddingMarkers={false}
+                        maxClusterRadius={60}
+                        spiderfyOnMaxZoom={false}
+                        showCoverageOnHover={false}
+                        zoomToBoundsOnClick={true}
+                        iconCreateFunction={(cluster: any) => {
+                            const childMarkers = cluster.getAllChildMarkers();
+                            const count = childMarkers.length;
+
+                            // Collect up to 5 photos, one from each event
+                            const photos: string[] = [];
+                            for (const child of childMarkers) {
+                                if (photos.length >= 5) break;
+                                const markerData = markers.find(m =>
+                                    m.lat === child.getLatLng().lat && m.lng === child.getLatLng().lng
+                                );
+                                if (markerData?.photos && markerData.photos.length > 0) {
+                                    photos.push(markerData.photos[0].url);
+                                }
                             }
-                        }
 
-                        // Create photo collage HTML
-                        const photoHTML = photos.length > 0
-                            ? photos.map((url, i) => `
+                            // Create photo collage HTML
+                            const photoHTML = photos.length > 0
+                                ? photos.map((url, i) => `
                                 <div style="
                                     position: absolute;
                                     width: ${photos.length === 1 ? '100%' : '50%'};
@@ -486,14 +505,14 @@ export default function Map() {
                                     <img src="${url}" style="width: 100%; height: 100%; object-fit: cover;" />
                                 </div>
                             `).join('')
-                            : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 32px;">📍</div>`;
+                                : `<div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 32px;">📍</div>`;
 
-                        // Create fan-out HTML for hover state
-                        const fanHTML = photos.map((url, index) => {
-                            const rotation = (index - Math.floor(photos.length / 2)) * 20; // Increased spacing (15 -> 20)
-                            // Higher pop-up: -45px base (was -30px)
-                            const translateY = -45 - (Math.abs(index - Math.floor(photos.length / 2)) * 5);
-                            return `
+                            // Create fan-out HTML for hover state
+                            const fanHTML = photos.map((url, index) => {
+                                const rotation = (index - Math.floor(photos.length / 2)) * 20; // Increased spacing (15 -> 20)
+                                // Higher pop-up: -45px base (was -30px)
+                                const translateY = -45 - (Math.abs(index - Math.floor(photos.length / 2)) * 5);
+                                return `
                                 <div class="cluster-fan-photo" style="
                                     --rotation: ${rotation}deg;
                                     --translateY: ${translateY}px;
@@ -514,10 +533,10 @@ export default function Map() {
                                     <img src="${url}" style="width: 100%; height: 100%; object-fit: cover;" />
                                 </div>
                             `;
-                        }).join('');
+                            }).join('');
 
-                        return L.divIcon({
-                            html: `
+                            return L.divIcon({
+                                html: `
                                 <div class="cluster-container" style="position: relative; width: 60px; height: 60px;">
                                     <div class="cluster-collage" style="
                                         position: relative;
@@ -554,29 +573,29 @@ export default function Map() {
                                     ${fanHTML}
                                 </div>
                             `,
-                            className: 'custom-cluster-icon',
-                            iconSize: [60, 60],
-                            iconAnchor: [30, 30],
-                        });
-                    }}
-                >
-                    {markers
-                        .filter(marker => !marker.category || activeCategories.has(marker.category))
-                        .map((marker) => {
-                            // Use photo thumbnail if available, otherwise use category emoji
-                            const hasPhoto = marker.photos && marker.photos.length > 0;
-                            const photos = hasPhoto ? marker.photos!.slice(0, 5) : []; // Max 5 photos
-                            const photoUrl = hasPhoto ? marker.photos![0].url : '';
-                            const categoryEmoji = marker.category && CATEGORIES[marker.category as keyof typeof CATEGORIES]
-                                ? CATEGORIES[marker.category as keyof typeof CATEGORIES].emoji
-                                : '📍';
+                                className: 'custom-cluster-icon',
+                                iconSize: [60, 60],
+                                iconAnchor: [30, 30],
+                            });
+                        }}
+                    >
+                        {markers
+                            .filter(marker => !marker.category || activeCategories.has(marker.category))
+                            .map((marker) => {
+                                // Use photo thumbnail if available, otherwise use category emoji
+                                const hasPhoto = marker.photos && marker.photos.length > 0;
+                                const photos = hasPhoto ? marker.photos!.slice(0, 5) : []; // Max 5 photos
+                                const photoUrl = hasPhoto ? marker.photos![0].url : '';
+                                const categoryEmoji = marker.category && CATEGORIES[marker.category as keyof typeof CATEGORIES]
+                                    ? CATEGORIES[marker.category as keyof typeof CATEGORIES].emoji
+                                    : '📍';
 
-                            // Generate fan of photos
-                            const photoFan = photos.map((photo, index) => {
-                                const rotation = (index - Math.floor(photos.length / 2)) * 20; // Increased spacing (15 -> 20)
-                                // Higher pop-up: -45px base (was -30px)
-                                const translateY = -45 - (Math.abs(index - Math.floor(photos.length / 2)) * 5);
-                                return `
+                                // Generate fan of photos
+                                const photoFan = photos.map((photo, index) => {
+                                    const rotation = (index - Math.floor(photos.length / 2)) * 20; // Increased spacing (15 -> 20)
+                                    // Higher pop-up: -45px base (was -30px)
+                                    const translateY = -45 - (Math.abs(index - Math.floor(photos.length / 2)) * 5);
+                                    return `
                                 <div class="fan-photo" style="
                                     --rotation: ${rotation}deg;
                                     --translateY: ${translateY}px;
@@ -600,11 +619,11 @@ export default function Map() {
                                     />
                                 </div>
                             `;
-                            }).join('');
+                                }).join('');
 
-                            const customIcon = L.divIcon({
-                                html: hasPhoto
-                                    ? `<div class="photo-marker-container" style="position: relative; width: 50px; height: 50px;">
+                                const customIcon = L.divIcon({
+                                    html: hasPhoto
+                                        ? `<div class="photo-marker-container" style="position: relative; width: 50px; height: 50px;">
                                     <div class="photo-marker" style="
                                         width: 50px; 
                                         height: 50px; 
@@ -625,7 +644,7 @@ export default function Map() {
                                     </div>
                                     ${photoFan}
                                   </div>`
-                                    : `<div class="emoji-marker" style="
+                                        : `<div class="emoji-marker" style="
                                     width: 40px; 
                                     height: 40px; 
                                     border-radius: 50%; 
@@ -641,37 +660,38 @@ export default function Map() {
                                   ">
                                     ${categoryEmoji}
                                   </div>`,
-                                className: '',
-                                iconSize: hasPhoto ? [50, 50] : [40, 40],
-                                iconAnchor: hasPhoto ? [25, 25] : [20, 20],
-                                popupAnchor: [0, hasPhoto ? -25 : -20],
-                            });
-                            return (
-                                <Marker
-                                    key={marker.id}
-                                    position={[marker.lat, marker.lng]}
-                                    icon={customIcon}
-                                    eventHandlers={{
-                                        click: () => openMemory(marker),
-                                    }}
-                                />
-                            );
-                        })}
-                </MarkerClusterGroup>
+                                    className: '',
+                                    iconSize: hasPhoto ? [50, 50] : [40, 40],
+                                    iconAnchor: hasPhoto ? [25, 25] : [20, 20],
+                                    popupAnchor: [0, hasPhoto ? -25 : -20],
+                                });
+                                return (
+                                    <Marker
+                                        key={marker.id}
+                                        position={[marker.lat, marker.lng]}
+                                        icon={customIcon}
+                                        eventHandlers={{
+                                            click: () => openMemory(marker),
+                                        }}
+                                    />
+                                );
+                            })}
+                    </MarkerClusterGroup>
 
-                {/* Current location marker - outside cluster group */}
-                {currentLocation && L && (
-                    <Marker
-                        position={[currentLocation.lat, currentLocation.lng]}
-                        icon={L.divIcon({
-                            html: `<div style="width:20px; height:20px; background:#3b82f6; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(59,130,246,0.5);" class="pulse-marker"></div>`,
-                            className: '',
-                            iconSize: [20, 20],
-                            iconAnchor: [10, 10],
-                        })}
-                    />
-                )}
-            </MapContainer>
+                    {/* Current location marker - outside cluster group */}
+                    {currentLocation && L && (
+                        <Marker
+                            position={[currentLocation.lat, currentLocation.lng]}
+                            icon={L.divIcon({
+                                html: `<div style="width:20px; height:20px; background:#3b82f6; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(59,130,246,0.5);" class="pulse-marker"></div>`,
+                                className: '',
+                                iconSize: [20, 20],
+                                iconAnchor: [10, 10],
+                            })}
+                        />
+                    )}
+                </MapContainer>
+            )}
 
             {/* Quick Add Button */}
             <button
