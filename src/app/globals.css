@@ -191,6 +191,12 @@ body {
   transition: none !important;
 }
 
+/* Hide default Leaflet markers (red pins) - only show our custom markers */
+.leaflet-marker-icon:not(.photo-marker-container):not(.custom-cluster-icon):not([class*="pulse-marker"]) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 .custom-cluster-icon:hover {
   z-index: 1000 !important;
 }
