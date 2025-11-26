@@ -71,6 +71,7 @@ export default function Map() {
     const [isEditMode, setIsEditMode] = useState(false);
     const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [mapInstance, setMapInstance] = useState<any>(null);
+    const hasInitiallyFitBounds = useRef(false);
     const [showRoute, setShowRoute] = useState(true);
     const [timelineIndex, setTimelineIndex] = useState(-1); // -1 means show all
     const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set(Object.keys(CATEGORIES)));
@@ -167,11 +168,21 @@ export default function Map() {
             // If showing all events (-1), fit bounds to show all markers
             if (markers.length > 0) {
                 const bounds = L.latLngBounds(markers.map(m => [m.lat, m.lng]));
-                mapInstance.flyToBounds(bounds, {
-                    padding: [50, 50],
-                    duration: 1.5,
-                    maxZoom: 12
-                });
+
+                // Use instant fitBounds on initial load, animated flyToBounds for user navigation
+                if (!hasInitiallyFitBounds.current) {
+                    mapInstance.fitBounds(bounds, {
+                        padding: [50, 50],
+                        maxZoom: 12
+                    });
+                    hasInitiallyFitBounds.current = true;
+                } else {
+                    mapInstance.flyToBounds(bounds, {
+                        padding: [50, 50],
+                        duration: 1.5,
+                        maxZoom: 12
+                    });
+                }
             }
         }
     }, [timelineIndex, mapInstance, markers]);
