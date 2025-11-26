@@ -26,6 +26,13 @@ const CATEGORIES = {
     other: { label: 'Other', color: '#95A5A6', emoji: '📍' },
 };
 
+// Override Leaflet's default icon to prevent red markers from appearing
+if (L) {
+    L.Icon.Default.prototype.options.iconUrl = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+    L.Icon.Default.prototype.options.iconRetinaUrl = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+    L.Icon.Default.prototype.options.shadowUrl = 'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==';
+}
+
 // Component to handle map clicks
 function MapEvents({ onMapClick, setMap }: { onMapClick: (e: any) => void; setMap: (map: any) => void }) {
     const map = useMapEvents({
