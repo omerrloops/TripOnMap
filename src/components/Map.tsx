@@ -37,6 +37,16 @@ if (L) {
 function MapEvents({ onMapClick, setMap }: { onMapClick: (e: any) => void; setMap: (map: any) => void }) {
     const map = useMapEvents({
         click: (e) => {
+            // Don't open modal if clicking on a marker or cluster
+            const target = (e.originalEvent as any).target;
+            if (target && (
+                target.closest('.leaflet-marker-icon') ||
+                target.closest('.marker-cluster') ||
+                target.closest('.custom-cluster-icon') ||
+                target.closest('.photo-marker-container')
+            )) {
+                return;
+            }
             onMapClick(e);
         },
     });
