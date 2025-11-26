@@ -76,9 +76,20 @@ export default function Map() {
     const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set(Object.keys(CATEGORIES)));
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
-    // Center on Bulgaria
-    const center: [number, number] = [42.7339, 25.4858];
-    const zoom = 10; // More zoomed out view
+    // Calculate initial center and zoom from markers
+    const getInitialView = () => {
+        if (markers.length === 0) {
+            return { center: [42.7339, 25.4858] as [number, number], zoom: 10 };
+        }
+        // Calculate bounds from markers
+        const lats = markers.map(m => m.lat);
+        const lngs = markers.map(m => m.lng);
+        const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+        const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+        return { center: [centerLat, centerLng] as [number, number], zoom: 10 };
+    };
+
+    const { center, zoom } = getInitialView();
 
     // Load existing locations from Supabase
     useEffect(() => {
