@@ -448,6 +448,7 @@ export default function Map() {
                 <MarkerClusterGroup
                     chunkedLoading
                     animate={false}
+                    animateAddingMarkers={false}
                     maxClusterRadius={60}
                     spiderfyOnMaxZoom={true}
                     showCoverageOnHover={false}
