@@ -75,6 +75,7 @@ export default function Map() {
     const [showRoute, setShowRoute] = useState(true);
     const [timelineIndex, setTimelineIndex] = useState(-1); // -1 means show all
     const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set(Object.keys(CATEGORIES)));
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
     // Center on Bulgaria
     const center: [number, number] = [42.7339, 25.4858];
@@ -730,10 +731,22 @@ export default function Map() {
                 </div>
             )}
 
-            {/* Category Filters */}
-            <div className="fixed top-20 right-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-lg shadow-xl p-4 max-w-xs">
-                <h3 className="text-sm font-semibold mb-3 text-gray-700">Filter by Category</h3>
-                <div className="flex flex-wrap gap-2">
+            {/* Category Filter Toggle */}
+            <button
+                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+                className={`fixed top-20 right-4 z-[1000] w-12 h-12 flex items-center justify-center ${isFiltersOpen ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700'} rounded-full shadow-lg transition-all hover:scale-110`}
+                title="Filter Categories"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                </svg>
+            </button>
+
+            {/* Category Filters Panel */}
+            <div className={`fixed top-20 right-20 z-[1000] bg-white/95 backdrop-blur-sm rounded-lg shadow-xl p-4 max-w-xs transition-all duration-300 origin-right ${isFiltersOpen ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-95 translate-x-8 pointer-events-none'
+                }`}>
+                <h3 className="text-sm font-semibold mb-3 text-gray-700 whitespace-nowrap">Filter by Category</h3>
+                <div className="flex flex-col gap-2">
                     {Object.entries(CATEGORIES).map(([key, { emoji, label, color }]) => {
                         const isActive = activeCategories.has(key);
                         const count = markers.filter(m => m.category === key).length;
@@ -750,26 +763,29 @@ export default function Map() {
                                     }
                                     setActiveCategories(newCategories);
                                 }}
-                                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm flex items-center gap-2 ${isActive
-                                    ? 'border-current shadow-md scale-105'
-                                    : 'border-gray-200 opacity-50 hover:opacity-75'
+                                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm flex items-center justify-between gap-3 w-full ${isActive
+                                        ? 'border-current shadow-sm'
+                                        : 'border-gray-200 opacity-50 hover:opacity-75'
                                     }`}
                                 style={{
                                     borderColor: isActive ? color : undefined,
                                     backgroundColor: isActive ? `${color}15` : undefined,
                                 }}
                             >
-                                <span className="text-lg">{emoji}</span>
-                                <span className="font-medium">{count}</span>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-lg">{emoji}</span>
+                                    <span className="font-medium text-gray-700">{label}</span>
+                                </div>
+                                <span className="font-bold text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-600">{count}</span>
                             </button>
                         );
                     })}
                 </div>
                 <button
                     onClick={() => setActiveCategories(new Set(Object.keys(CATEGORIES)))}
-                    className="mt-3 w-full text-xs text-indigo-600 hover:text-indigo-700 font-medium"
+                    className="mt-3 w-full text-xs text-indigo-600 hover:text-indigo-700 font-medium border-t pt-2"
                 >
-                    Show All
+                    Reset Filters
                 </button>
             </div>
 
