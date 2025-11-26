@@ -186,6 +186,11 @@ body {
   transition: transform 0.3s ease;
 }
 
+/* Disable sliding animation on cluster markers */
+.marker-cluster {
+  transition: none !important;
+}
+
 .custom-cluster-icon:hover {
   z-index: 1000 !important;
 }
