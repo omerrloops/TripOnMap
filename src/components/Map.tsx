@@ -581,6 +581,8 @@ export default function Map() {
                                     opacity: 0;
                                     pointer-events: none;
                                     z-index: ${10 - index};
+                                    left: -5px;
+                                    top: -5px;
                                 ">
                                     <img src="${photo.url}" 
                                          style="width: 100%; height: 100%; object-fit: cover;"
@@ -764,8 +766,8 @@ export default function Map() {
                                     setActiveCategories(newCategories);
                                 }}
                                 className={`px-3 py-2 rounded-lg border-2 transition-all text-sm flex items-center justify-between gap-3 w-full ${isActive
-                                        ? 'border-current shadow-sm'
-                                        : 'border-gray-200 opacity-50 hover:opacity-75'
+                                    ? 'border-current shadow-sm'
+                                    : 'border-gray-200 opacity-50 hover:opacity-75'
                                     }`}
                                 style={{
                                     borderColor: isActive ? color : undefined,
