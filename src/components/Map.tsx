@@ -71,7 +71,6 @@ export default function Map() {
     const [isEditMode, setIsEditMode] = useState(false);
     const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [mapInstance, setMapInstance] = useState<any>(null);
-    const hasInitiallyCentered = useRef(false);
     const [showRoute, setShowRoute] = useState(true);
     const [timelineIndex, setTimelineIndex] = useState(-1); // -1 means show all
     const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set(Object.keys(CATEGORIES)));
@@ -115,12 +114,7 @@ export default function Map() {
                 (position) => {
                     const { latitude, longitude } = position.coords;
                     setCurrentLocation({ lat: latitude, lng: longitude });
-
-                    // Only center map on initial location IF there are no markers to show
-                    // Otherwise, the timeline effect will handle centering on the events
-                    if (mapInstance && markers.length === 0) {
-                        mapInstance.setView([latitude, longitude], 11);
-                    }
+                    // Don't center on GPS - let the timeline effect handle initial centering
                 },
                 (error) => {
                     console.error('Error getting location:', error);
@@ -182,13 +176,7 @@ export default function Map() {
         }
     }, [timelineIndex, mapInstance, markers]);
 
-    // Center map when location is first obtained
-    useEffect(() => {
-        if (currentLocation && mapInstance && !hasInitiallyCentered.current) {
-            mapInstance.setView([currentLocation.lat, currentLocation.lng], 11); // Slightly zoomed out
-            hasInitiallyCentered.current = true;
-        }
-    }, [currentLocation, mapInstance]);
+
 
     const handleMapClick = (e: L.LeafletMouseEvent) => {
         setTempLocation({ lat: e.latlng.lat, lng: e.latlng.lng });
