@@ -158,11 +158,8 @@ export default function Map() {
 
             const targetMarker = sortedMarkers[timelineIndex];
             if (targetMarker) {
-                // Zoom level 18 to ensure we break clusters and see the specific event
-                mapInstance.flyTo([targetMarker.lat, targetMarker.lng], 18, {
-                    duration: 1.2, // Slightly faster for less "shaky" feel
-                    easeLinearity: 0.5
-                });
+                // Use instant setView instead of flyTo for snappier navigation
+                mapInstance.setView([targetMarker.lat, targetMarker.lng], 18);
             }
         } else {
             // If showing all events (-1), fit bounds to show all markers
@@ -671,6 +668,26 @@ export default function Map() {
                 <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <line x1="12" y1="5" x2="12" y2="19" />
                     <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+            </button>
+
+            {/* Locate Me Button */}
+            <button
+                onClick={() => {
+                    if (currentLocation && mapInstance) {
+                        mapInstance.flyTo([currentLocation.lat, currentLocation.lng], 16, {
+                            duration: 1.2
+                        });
+                    } else {
+                        alert('Waiting for GPS location. Please try again in a moment.');
+                    }
+                }}
+                className="fixed bottom-24 left-20 z-[1000] w-14 h-14 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all hover:scale-110"
+                title="Center on my location"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                    <circle cx="12" cy="10" r="3" />
                 </svg>
             </button>
 
