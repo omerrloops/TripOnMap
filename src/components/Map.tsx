@@ -447,6 +447,7 @@ export default function Map() {
                 {/* Markers with photo fan-out and clustering */}
                 <MarkerClusterGroup
                     chunkedLoading
+                    animate={false}
                     maxClusterRadius={60}
                     spiderfyOnMaxZoom={true}
                     showCoverageOnHover={false}
