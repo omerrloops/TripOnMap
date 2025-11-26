@@ -134,7 +134,8 @@ export default function Map() {
                     setCurrentLocation({ lat: latitude, lng: longitude });
                 },
                 (error) => {
-                    console.error('Error watching location:', error);
+                    // Silently handle watch errors - they're non-critical
+                    console.log('Location watch unavailable:', error.code);
                 },
                 {
                     enableHighAccuracy: true,
