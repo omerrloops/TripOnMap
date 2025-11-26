@@ -26,24 +26,6 @@ const CATEGORIES = {
     other: { label: 'Other', color: '#95A5A6', emoji: '📍' },
 };
 
-// Default icon setup (only on client)
-let defaultIcon: any;
-if (L) {
-    const iconUrl = 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon.png';
-    const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon-2x.png';
-    const shadowUrl = 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png';
-    defaultIcon = L.icon({
-        iconUrl,
-        iconRetinaUrl,
-        shadowUrl,
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41],
-    });
-    L.Marker.prototype.options.icon = defaultIcon;
-}
-
 // Component to handle map clicks
 function MapEvents({ onMapClick, setMap }: { onMapClick: (e: any) => void; setMap: (map: any) => void }) {
     const map = useMapEvents({
