@@ -161,9 +161,10 @@ export default function Map() {
 
             const targetMarker = sortedMarkers[timelineIndex];
             if (targetMarker) {
-                mapInstance.flyTo([targetMarker.lat, targetMarker.lng], 15, {
-                    duration: 1.5,
-                    easeLinearity: 0.25
+                // Zoom level 18 to ensure we break clusters and see the specific event
+                mapInstance.flyTo([targetMarker.lat, targetMarker.lng], 18, {
+                    duration: 1.2, // Slightly faster for less "shaky" feel
+                    easeLinearity: 0.5
                 });
             }
         } else {
