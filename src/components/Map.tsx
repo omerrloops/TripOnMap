@@ -412,18 +412,7 @@ export default function Map() {
                 />
                 <MapEvents onMapClick={handleMapClick} setMap={setMapInstance} />
 
-                {/* Current location marker */}
-                {currentLocation && L && (
-                    <Marker
-                        position={[currentLocation.lat, currentLocation.lng]}
-                        icon={L.divIcon({
-                            html: `<div style="width:20px; height:20px; background:#3b82f6; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(59,130,246,0.5);" class="pulse-marker"></div>`,
-                            className: '',
-                            iconSize: [20, 20],
-                            iconAnchor: [10, 10],
-                        })}
-                    />
-                )}
+
 
                 {/* Route line connecting markers chronologically */}
                 {showRoute && markers.length > 1 && (
@@ -659,6 +648,19 @@ export default function Map() {
                             );
                         })}
                 </MarkerClusterGroup>
+
+                {/* Current location marker - outside cluster group */}
+                {currentLocation && L && (
+                    <Marker
+                        position={[currentLocation.lat, currentLocation.lng]}
+                        icon={L.divIcon({
+                            html: `<div style="width:20px; height:20px; background:#3b82f6; border-radius:50%; border:3px solid white; box-shadow:0 0 10px rgba(59,130,246,0.5);" class="pulse-marker"></div>`,
+                            className: '',
+                            iconSize: [20, 20],
+                            iconAnchor: [10, 10],
+                        })}
+                    />
+                )}
             </MapContainer>
 
             {/* Quick Add Button */}
