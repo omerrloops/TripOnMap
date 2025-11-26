@@ -439,9 +439,9 @@ export default function Map() {
                     animate={false}
                     animateAddingMarkers={false}
                     maxClusterRadius={60}
-                    spiderfyOnMaxZoom={true}
+                    spiderfyOnMaxZoom={false}
                     showCoverageOnHover={false}
-                    zoomToBoundsOnClick={true}
+                    zoomToBoundsOnClick={false}
                     iconCreateFunction={(cluster: any) => {
                         const childMarkers = cluster.getAllChildMarkers();
                         const count = childMarkers.length;
