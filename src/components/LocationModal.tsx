@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, Upload } from 'lucide-react';
+import { CATEGORIES } from '../constants/categories';
 
 interface LocationModalProps {
     isOpen: boolean;
@@ -18,20 +19,6 @@ interface LocationModalProps {
     };
     isEditMode?: boolean;
 }
-
-// Category definitions with colors and emojis
-const CATEGORIES = {
-    food: { label: 'Food & Dining', color: '#FF6B6B', emoji: '🍽️' },
-    attractions: { label: 'Attractions & Sights', color: '#4ECDC4', emoji: '🏛️' },
-    nature: { label: 'Nature & Outdoors', color: '#95E1D3', emoji: '🌲' },
-    accommodation: { label: 'Accommodation', color: '#F38181', emoji: '🏨' },
-    activities: { label: 'Activities & Fun', color: '#FFA07A', emoji: '🎯' },
-    shopping: { label: 'Shopping', color: '#DDA15E', emoji: '🛍️' },
-    culture: { label: 'Culture & History', color: '#9B59B6', emoji: '🎭' },
-    nightlife: { label: 'Nightlife', color: '#E74C3C', emoji: '🌙' },
-    transport: { label: 'Transport', color: '#3498DB', emoji: '🚗' },
-    other: { label: 'Other', color: '#95A5A6', emoji: '📍' },
-};
 
 export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, initialData, isEditMode = false }: LocationModalProps) {
     const [description, setDescription] = useState(initialData?.description || '');

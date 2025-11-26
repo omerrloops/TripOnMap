@@ -3,28 +3,22 @@
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from 'react-leaflet';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import LocationModal from './LocationModal';
+import MemoryBook from './MemoryBook';
+import Timeline from './Timeline';
 import { supabase } from '../../lib/supabase';
 import MarkerClusterGroup from 'react-leaflet-cluster';
+import { CATEGORIES } from '../constants/categories';
+import { MarkerData } from '../types/map';
+import MapControls from './MapControls';
+import CategoryFilter from './CategoryFilter';
+import { useMarkerData } from '../hooks/useMarkerData';
+import { useGeolocation } from '../hooks/useGeolocation';
 
 let L: any;
 if (typeof window !== 'undefined') {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     L = require('leaflet');
 }
-
-// Category definitions (must match LocationModal)
-const CATEGORIES = {
-    food: { label: 'Food & Dining', color: '#FF6B6B', emoji: '🍽️' },
-    attractions: { label: 'Attractions & Sights', color: '#4ECDC4', emoji: '🏛️' },
-    nature: { label: 'Nature & Outdoors', color: '#95E1D3', emoji: '🌲' },
-    accommodation: { label: 'Accommodation', color: '#F38181', emoji: '🏨' },
-    activities: { label: 'Activities & Fun', color: '#FFA07A', emoji: '🎯' },
-    shopping: { label: 'Shopping', color: '#DDA15E', emoji: '🛍️' },
-    culture: { label: 'Culture & History', color: '#9B59B6', emoji: '🎭' },
-    nightlife: { label: 'Nightlife', color: '#E74C3C', emoji: '🌙' },
-    transport: { label: 'Transport', color: '#3498DB', emoji: '🚗' },
-    other: { label: 'Other', color: '#95A5A6', emoji: '📍' },
-};
 
 // Override Leaflet's default icon to prevent red markers from appearing
 if (L) {
@@ -59,34 +53,20 @@ function MapEvents({ onMapClick, setMap }: { onMapClick: (e: any) => void; setMa
     return null;
 }
 
-type MarkerData = {
-    lat: number;
-    lng: number;
-    id: string;
-    description?: string;
-    date?: string;
-    color?: string;
-    category?: string;
-    locationName?: string;
-    photos?: { url: string; name: string }[]
-};
-
 export default function Map() {
-    const [markers, setMarkers] = useState<MarkerData[]>([]);
+    const { markers, setMarkers, isLoadingMarkers } = useMarkerData();
+    const { currentLocation } = useGeolocation();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [tempLocation, setTempLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [selectedMemory, setSelectedMemory] = useState<MarkerData | null>(null);
-    const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
     const [editingMarker, setEditingMarker] = useState<MarkerData | null>(null);
     const [isEditMode, setIsEditMode] = useState(false);
-    const [currentLocation, setCurrentLocation] = useState<{ lat: number; lng: number } | null>(null);
     const [mapInstance, setMapInstance] = useState<any>(null);
     const hasInitiallyFitBounds = useRef(false);
     const [showRoute, setShowRoute] = useState(true);
     const [timelineIndex, setTimelineIndex] = useState(-1); // -1 means show all
     const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set(Object.keys(CATEGORIES)));
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
-    const [isLoadingMarkers, setIsLoadingMarkers] = useState(true);
 
     // Calculate initial center and zoom from markers
     const { center, zoom } = useMemo(() => {
@@ -101,71 +81,7 @@ export default function Map() {
         return { center: [centerLat, centerLng] as [number, number], zoom: 10 };
     }, [markers]);
 
-    // Load existing locations from Supabase
-    useEffect(() => {
-        const fetchLocations = async () => {
-            const { data, error } = await supabase.from('locations').select('*');
-            if (error) {
-                console.error('Error fetching locations:', error);
-                return;
-            }
-            if (data) {
-                const loadedMarkers: MarkerData[] = data.map((loc: any) => ({
-                    id: loc.id,
-                    lat: loc.lat,
-                    lng: loc.lng,
-                    description: loc.description,
-                    date: loc.date,
-                    color: loc.color,
-                    category: loc.category,
-                    locationName: loc.location_name,
-                    photos: loc.photos,
-                }));
-                setMarkers(loadedMarkers);
-                setIsLoadingMarkers(false);
-            }
-        };
-        fetchLocations();
-    }, []);
 
-    // Automatically track current location
-    useEffect(() => {
-        if ('geolocation' in navigator) {
-            // Get initial position
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    const { latitude, longitude } = position.coords;
-                    setCurrentLocation({ lat: latitude, lng: longitude });
-                    // Don't center on GPS - let the timeline effect handle initial centering
-                },
-                (error) => {
-                    console.error('Error getting location:', error);
-                }
-            );
-
-            // Watch position for continuous updates
-            const watchId = navigator.geolocation.watchPosition(
-                (position) => {
-                    const { latitude, longitude } = position.coords;
-                    setCurrentLocation({ lat: latitude, lng: longitude });
-                },
-                (error) => {
-                    // Silently handle watch errors - they're non-critical
-                    console.log('Location watch unavailable:', error.code);
-                },
-                {
-                    enableHighAccuracy: true,
-                    maximumAge: 10000,
-                    timeout: 5000,
-                }
-            );
-
-            // Cleanup: stop watching when component unmounts
-            return () => {
-                navigator.geolocation.clearWatch(watchId);
-            };
-        }
-    }, [mapInstance]);
 
     // Focus map on timeline navigation
     useEffect(() => {
@@ -329,12 +245,10 @@ export default function Map() {
 
     const openMemory = (marker: MarkerData) => {
         setSelectedMemory(marker);
-        setCurrentPhotoIndex(0);
     };
 
     const closeMemory = () => {
         setSelectedMemory(null);
-        setCurrentPhotoIndex(0);
     };
 
     const handleEditMemory = () => {
@@ -391,24 +305,7 @@ export default function Map() {
 
         // Close the modal
         setSelectedMemory(null);
-        setCurrentPhotoIndex(0);
     };
-
-    const nextPhoto = () => {
-        if (selectedMemory?.photos) {
-            setCurrentPhotoIndex((prev) => (prev + 1) % selectedMemory.photos!.length);
-        }
-    };
-
-    const prevPhoto = () => {
-        if (selectedMemory?.photos) {
-            setCurrentPhotoIndex((prev) =>
-                prev === 0 ? selectedMemory.photos!.length - 1 : prev - 1
-            );
-        }
-    };
-
-
 
     const handleQuickAdd = () => {
         if (currentLocation) {
@@ -693,21 +590,9 @@ export default function Map() {
                 </MapContainer>
             )}
 
-            {/* Quick Add Button */}
-            <button
-                onClick={handleQuickAdd}
-                className="fixed bottom-24 left-4 z-[1000] w-14 h-14 flex items-center justify-center bg-green-600 hover:bg-green-700 text-white rounded-full shadow-lg transition-all hover:scale-110"
-                title="Add event at current location"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="12" y1="5" x2="12" y2="19" />
-                    <line x1="5" y1="12" x2="19" y2="12" />
-                </svg>
-            </button>
-
-            {/* Locate Me Button */}
-            <button
-                onClick={() => {
+            <MapControls
+                onQuickAdd={handleQuickAdd}
+                onLocateMe={() => {
                     if (currentLocation && mapInstance) {
                         mapInstance.flyTo([currentLocation.lat, currentLocation.lng], 16, {
                             duration: 1.2
@@ -716,304 +601,34 @@ export default function Map() {
                         alert('Waiting for GPS location. Please try again in a moment.');
                     }
                 }}
-                className="fixed bottom-24 left-20 z-[1000] w-14 h-14 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg transition-all hover:scale-110"
-                title="Center on my location"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
-                    <circle cx="12" cy="10" r="3" />
-                </svg>
-            </button>
-
-
-
-            {/* Route Toggle Button */}
-            <button
-                onClick={() => setShowRoute(!showRoute)}
-                className={`fixed bottom-24 right-4 z-[1000] w-14 h-14 flex items-center justify-center ${showRoute ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-600 hover:bg-gray-700'} text-white rounded-full shadow-lg transition-all hover:scale-110`}
-                title={showRoute ? "Hide route" : "Show route"}
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="6" cy="19" r="3" />
-                    <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" />
-                    <circle cx="18" cy="5" r="3" />
-                </svg>
-            </button>
+                onToggleRoute={() => setShowRoute(!showRoute)}
+                showRoute={showRoute}
+                onToggleFilters={() => setIsFiltersOpen(!isFiltersOpen)}
+                isFiltersOpen={isFiltersOpen}
+            />
 
             {/* Timeline Slider */}
-            {markers.length > 1 && (
-                <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur-sm rounded-full shadow-xl px-6 py-3 flex items-center gap-4 max-w-2xl">
-                    <button
-                        onClick={() => setTimelineIndex(Math.max(-1, timelineIndex - 1))}
-                        className="p-2 hover:bg-gray-100 rounded-full transition"
-                        disabled={timelineIndex === -1}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="15 18 9 12 15 6" />
-                        </svg>
-                    </button>
+            <Timeline
+                markers={markers}
+                timelineIndex={timelineIndex}
+                setTimelineIndex={setTimelineIndex}
+            />
 
-                    <div className="flex-1 flex flex-col gap-1">
-                        <input
-                            type="range"
-                            min="-1"
-                            max={markers.length - 1}
-                            value={timelineIndex}
-                            onChange={(e) => setTimelineIndex(parseInt(e.target.value))}
-                            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
-                            style={{
-                                background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${((timelineIndex + 1) / markers.length) * 100}%, #e5e7eb ${((timelineIndex + 1) / markers.length) * 100}%, #e5e7eb 100%)`
-                            }}
-                        />
-                        <div className="text-xs text-gray-600 text-center">
-                            {timelineIndex === -1
-                                ? `All ${markers.length} events`
-                                : `Event ${timelineIndex + 1} of ${markers.length} - ${markers.sort((a, b) => new Date(a.date || '').getTime() - new Date(b.date || '').getTime())[timelineIndex]?.date}`
-                            }
-                        </div>
-                    </div>
-
-                    <button
-                        onClick={() => setTimelineIndex(Math.min(markers.length - 1, timelineIndex + 1))}
-                        className="p-2 hover:bg-gray-100 rounded-full transition"
-                        disabled={timelineIndex === markers.length - 1}
-                    >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                    </button>
-                </div>
-            )}
-
-            {/* Category Filter Toggle */}
-            <button
-                onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                className={`fixed top-20 right-4 z-[1000] w-12 h-12 flex items-center justify-center ${isFiltersOpen ? 'bg-indigo-600 text-white' : 'bg-white text-gray-700'} rounded-full shadow-lg transition-all hover:scale-110`}
-                title="Filter Categories"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                </svg>
-            </button>
-
-            {/* Category Filters Panel */}
-            <div className={`fixed top-20 right-20 z-[1000] bg-white/95 backdrop-blur-sm rounded-lg shadow-xl p-4 max-w-xs transition-all duration-300 origin-right ${isFiltersOpen ? 'opacity-100 scale-100 translate-x-0' : 'opacity-0 scale-95 translate-x-8 pointer-events-none'
-                }`}>
-                <h3 className="text-sm font-semibold mb-3 text-gray-700 whitespace-nowrap">Filter by Category</h3>
-                <div className="flex flex-col gap-2">
-                    {Object.entries(CATEGORIES).map(([key, { emoji, label, color }]) => {
-                        const isActive = activeCategories.has(key);
-                        const count = markers.filter(m => m.category === key).length;
-
-                        return (
-                            <button
-                                key={key}
-                                onClick={() => {
-                                    const newCategories = new Set(activeCategories);
-                                    if (isActive) {
-                                        newCategories.delete(key);
-                                    } else {
-                                        newCategories.add(key);
-                                    }
-                                    setActiveCategories(newCategories);
-                                }}
-                                className={`px-3 py-2 rounded-lg border-2 transition-all text-sm flex items-center justify-between gap-3 w-full ${isActive
-                                    ? 'border-current shadow-sm'
-                                    : 'border-gray-200 opacity-50 hover:opacity-75'
-                                    }`}
-                                style={{
-                                    borderColor: isActive ? color : undefined,
-                                    backgroundColor: isActive ? `${color}15` : undefined,
-                                }}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <span className="text-lg">{emoji}</span>
-                                    <span className="font-medium text-gray-700">{label}</span>
-                                </div>
-                                <span className="font-bold text-xs bg-gray-100 px-2 py-0.5 rounded-full text-gray-600">{count}</span>
-                            </button>
-                        );
-                    })}
-                </div>
-                <button
-                    onClick={() => setActiveCategories(new Set(Object.keys(CATEGORIES)))}
-                    className="mt-3 w-full text-xs text-indigo-600 hover:text-indigo-700 font-medium border-t pt-2"
-                >
-                    Reset Filters
-                </button>
-            </div>
+            <CategoryFilter
+                isOpen={isFiltersOpen}
+                activeCategories={activeCategories}
+                setActiveCategories={setActiveCategories}
+                markers={markers}
+            />
 
             {/* Memory Book Modal */}
             {selectedMemory && (
-                <div
-                    className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm memory-book-overlay"
-                    onClick={closeMemory}
-                >
-                    <div
-                        className="relative bg-gradient-to-br from-amber-50 to-orange-50 rounded-2xl shadow-2xl max-w-4xl w-full mx-4 overflow-hidden memory-book-page"
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                            maxHeight: '90vh',
-                            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 2px 4px rgba(255, 255, 255, 0.5)',
-                        }}
-                    >
-                        {/* Edit button */}
-                        <button
-                            onClick={handleEditMemory}
-                            className="absolute top-4 right-28 z-10 w-10 h-10 flex items-center justify-center bg-white/80 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110"
-                            title="Edit this memory"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-700">
-                                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                                <path d="m15 5 4 4" />
-                            </svg>
-                        </button>
-
-                        {/* Delete button */}
-                        <button
-                            onClick={handleDeleteMemory}
-                            className="absolute top-4 right-16 z-10 w-10 h-10 flex items-center justify-center bg-red-50 hover:bg-red-100 rounded-full shadow-lg transition-all hover:scale-110"
-                            title="Delete this memory"
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600">
-                                <path d="M3 6h18" />
-                                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
-                                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
-                                <line x1="10" x2="10" y1="11" y2="17" />
-                                <line x1="14" x2="14" y1="11" y2="17" />
-                            </svg>
-                        </button>
-
-                        {/* Close button */}
-                        <button
-                            onClick={closeMemory}
-                            className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center bg-white/80 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110"
-                        >
-                            <span className="text-2xl text-gray-700">×</span>
-                        </button>
-
-                        {/* Book Content */}
-                        <div className="p-8 overflow-y-auto" style={{ maxHeight: '90vh' }}>
-                            {/* Category Badge */}
-                            {selectedMemory.category && CATEGORIES[selectedMemory.category as keyof typeof CATEGORIES] && (
-                                <div className="flex justify-center mb-4">
-                                    <div
-                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full shadow-md"
-                                        style={{
-                                            backgroundColor: CATEGORIES[selectedMemory.category as keyof typeof CATEGORIES].color,
-                                            color: 'white'
-                                        }}
-                                    >
-                                        <span className="text-2xl">
-                                            {CATEGORIES[selectedMemory.category as keyof typeof CATEGORIES].emoji}
-                                        </span>
-                                        <span className="font-semibold">
-                                            {CATEGORIES[selectedMemory.category as keyof typeof CATEGORIES].label}
-                                        </span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Date Header - Like a chapter title */}
-                            <div className="text-center mb-6 border-b-2 border-amber-300 pb-4">
-                                <h2 className="text-4xl font-serif text-amber-900 mb-2" style={{ fontFamily: 'Georgia, serif' }}>
-                                    {selectedMemory.date}
-                                </h2>
-                                {selectedMemory.locationName && (
-                                    <p className="text-lg text-amber-700 mb-2 flex items-center justify-center gap-2">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
-                                            <circle cx="12" cy="10" r="3" />
-                                        </svg>
-                                        {selectedMemory.locationName}
-                                    </p>
-                                )}
-                                <div className="w-24 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent mx-auto"></div>
-                            </div>
-
-                            {/* Photo Gallery - The centerpiece */}
-                            {selectedMemory.photos && selectedMemory.photos.length > 0 && (
-                                <div className="mb-8">
-                                    <div className="relative aspect-[4/3] bg-white rounded-lg shadow-xl overflow-hidden border-8 border-white photo-frame">
-                                        <img
-                                            src={selectedMemory.photos[currentPhotoIndex].url}
-                                            alt={selectedMemory.photos[currentPhotoIndex].name}
-                                            className="w-full h-full object-cover"
-                                        />
-
-                                        {/* Photo caption on the frame */}
-                                        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                                            <p className="text-white text-center font-serif italic">
-                                                {selectedMemory.photos[currentPhotoIndex].name}
-                                            </p>
-                                        </div>
-
-                                        {/* Navigation arrows */}
-                                        {selectedMemory.photos.length > 1 && (
-                                            <>
-                                                <button
-                                                    onClick={prevPhoto}
-                                                    className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110"
-                                                >
-                                                    <span className="text-2xl text-gray-700">‹</span>
-                                                </button>
-                                                <button
-                                                    onClick={nextPhoto}
-                                                    className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110"
-                                                >
-                                                    <span className="text-2xl text-gray-700">›</span>
-                                                </button>
-                                            </>
-                                        )}
-
-                                        {/* Photo counter */}
-                                        {selectedMemory.photos.length > 1 && (
-                                            <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                                                {currentPhotoIndex + 1} / {selectedMemory.photos.length}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Thumbnail strip */}
-                                    {selectedMemory.photos.length > 1 && (
-                                        <div className="flex gap-2 mt-4 justify-center overflow-x-auto pb-2">
-                                            {selectedMemory.photos.map((photo, idx) => (
-                                                <button
-                                                    key={idx}
-                                                    onClick={() => setCurrentPhotoIndex(idx)}
-                                                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-4 transition-all ${idx === currentPhotoIndex
-                                                        ? 'border-amber-500 scale-110 shadow-lg'
-                                                        : 'border-white hover:border-amber-300'
-                                                        }`}
-                                                >
-                                                    <img
-                                                        src={photo.url}
-                                                        alt={photo.name}
-                                                        className="w-full h-full object-cover"
-                                                    />
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-
-                            {/* Description - Like journal entry */}
-                            <div className="bg-white/50 rounded-lg p-6 shadow-inner border border-amber-200">
-                                <p className="text-lg text-gray-800 leading-relaxed font-serif" style={{ fontFamily: 'Georgia, serif' }}>
-                                    {selectedMemory.description}
-                                </p>
-                            </div>
-
-                            {/* Decorative elements */}
-                            <div className="mt-6 flex justify-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                                <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                                <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <MemoryBook
+                    memory={selectedMemory}
+                    onClose={closeMemory}
+                    onEdit={handleEditMemory}
+                    onDelete={handleDeleteMemory}
+                />
             )}
 
             <LocationModal
