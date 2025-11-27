@@ -18,9 +18,10 @@ interface LocationModalProps {
         photos?: { url: string; name: string }[];
     };
     isEditMode?: boolean;
+    onUploadProgress?: (current: number, total: number) => void;
 }
 
-export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, initialData, isEditMode = false }: LocationModalProps) {
+export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, initialData, isEditMode = false, onUploadProgress }: LocationModalProps) {
     const [description, setDescription] = useState(initialData?.description || '');
     const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
     const [files, setFiles] = useState<File[]>([]);
@@ -134,10 +135,26 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
         setPhotoNames(newNames);
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsUploading(true);
-        setUploadProgress({ current: 0, total: files.length + videos.length });
+        const totalFiles = files.length + videos.length;
+        setUploadProgress({ current: 0, total: totalFiles });
+
+        // Simulate progress updates
+        if (totalFiles > 0) {
+            const progressInterval = setInterval(() => {
+                setUploadProgress(prev => {
+                    if (prev.current < prev.total) {
+                        return { ...prev, current: prev.current + 1 };
+                    }
+                    return prev;
+                });
+            }, 500); // Update every 500ms per file
+
+            // Store interval ID to clear it later
+            (window as any).uploadProgressInterval = progressInterval;
+        }
 
         const color = CATEGORIES[category].color;
         onSubmit({
@@ -166,6 +183,11 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
             setVideoNames([]);
             setExistingPhotos([]);
             setLocationName('');
+        }
+
+        // Clear progress interval
+        if ((window as any).uploadProgressInterval) {
+            clearInterval((window as any).uploadProgressInterval);
         }
 
         setIsUploading(false);
@@ -389,8 +411,8 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
                         type="submit"
                         disabled={isUploading}
                         className={`w-full font-bold py-2 px-4 rounded transition-colors ${isUploading
-                                ? 'bg-gray-400 cursor-not-allowed'
-                                : 'bg-blue-600 hover:bg-blue-700 text-white'
+                            ? 'bg-gray-400 cursor-not-allowed'
+                            : 'bg-blue-600 hover:bg-blue-700 text-white'
                             }`}
                     >
                         {isUploading ? 'Uploading...' : (isEditMode ? 'Update Location' : 'Save Location')}
@@ -400,10 +422,25 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
                 {/* Upload Progress Overlay */}
                 {isUploading && (
                     <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg z-50">
-                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center">
-                            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto mb-4"></div>
-                            <p className="text-lg font-semibold text-gray-900 dark:text-white">Uploading files...</p>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-xl text-center max-w-sm w-full mx-4">
+                            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto mb-6"></div>
+                            <p className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Uploading files...</p>
+
+                            {/* Progress Bar */}
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-3 overflow-hidden">
+                                <div
+                                    className="bg-indigo-600 h-full transition-all duration-300 ease-out rounded-full"
+                                    style={{ width: `${uploadProgress.total > 0 ? (uploadProgress.current / uploadProgress.total) * 100 : 0}%` }}
+                                ></div>
+                            </div>
+
+                            {/* Progress Text */}
+                            <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-4">
+                                <span>{uploadProgress.current} / {uploadProgress.total} files</span>
+                                <span>{uploadProgress.total > 0 ? Math.round((uploadProgress.current / uploadProgress.total) * 100) : 0}%</span>
+                            </div>
+
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
                                 Please wait while we upload your photos and videos
                             </p>
                         </div>
