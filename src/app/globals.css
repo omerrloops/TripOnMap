@@ -204,3 +204,19 @@ body {
   opacity: 1 !important;
   transform: rotate(var(--rotation)) translateY(var(--translateY)) !important;
 }
+
+/* Ensure zoom controls are visible */
+.leaflet-control-zoom {
+  z-index: 1000 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+}
+
+.leaflet-control-zoom a {
+  background-color: white !important;
+  color: #333 !important;
+  border: 1px solid #ccc !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background-color: #f4f4f4 !important;
+}
