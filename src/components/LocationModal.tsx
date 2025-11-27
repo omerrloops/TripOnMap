@@ -142,19 +142,24 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
         setUploadProgress({ current: 0, total: totalFiles });
 
         // Simulate progress updates
-        if (totalFiles > 0) {
-            const progressInterval = setInterval(() => {
-                setUploadProgress(prev => {
-                    if (prev.current < prev.total) {
-                        return { ...prev, current: prev.current + 1 };
-                    }
-                    return prev;
-                });
-            }, 500); // Update every 500ms per file
+        // Start at 0, increment to 90% over time, then jump to 100% on completion
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += Math.random() * 10;
+            if (progress > 90) progress = 90;
 
-            // Store interval ID to clear it later
-            (window as any).uploadProgressInterval = progressInterval;
-        }
+            // Calculate "current files" based on percentage for display
+            const currentFile = Math.floor((progress / 100) * totalFiles);
+
+            setUploadProgress({
+                current: currentFile,
+                total: totalFiles,
+                percentage: Math.round(progress)
+            } as any);
+        }, 500);
+
+        // Store interval ID to clear it later
+        (window as any).uploadProgressInterval = progressInterval;
 
         const color = CATEGORIES[category].color;
 
@@ -437,14 +442,14 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
                             <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 mb-3 overflow-hidden">
                                 <div
                                     className="bg-indigo-600 h-full transition-all duration-300 ease-out rounded-full"
-                                    style={{ width: `${uploadProgress.total > 0 ? (uploadProgress.current / uploadProgress.total) * 100 : 0}%` }}
+                                    style={{ width: `${(uploadProgress as any).percentage || 0}%` }}
                                 ></div>
                             </div>
 
                             {/* Progress Text */}
                             <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-4">
                                 <span>{uploadProgress.current} / {uploadProgress.total} files</span>
-                                <span>{uploadProgress.total > 0 ? Math.round((uploadProgress.current / uploadProgress.total) * 100) : 0}%</span>
+                                <span>{(uploadProgress as any).percentage || 0}%</span>
                             </div>
 
                             <p className="text-xs text-gray-500 dark:text-gray-400">
