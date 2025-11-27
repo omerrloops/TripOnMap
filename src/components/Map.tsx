@@ -159,6 +159,9 @@ export default function Map() {
         if (isEditMode && editingMarker) {
             // Upload new photos to Supabase storage
             const uploadedPhotos: { url: string; name: string }[] = [];
+            let uploadedCount = 0;
+            const totalFiles = (files?.length || 0) + (data.videos?.length || 0);
+
             if (files && files.length > 0) {
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
@@ -173,6 +176,11 @@ export default function Map() {
                     }
                     const { data: urlData } = supabase.storage.from('trip_photos').getPublicUrl(filePath);
                     uploadedPhotos.push({ url: urlData.publicUrl, name: fileName });
+
+                    uploadedCount++;
+                    if (data.onUploadProgress) {
+                        data.onUploadProgress(uploadedCount, totalFiles);
+                    }
                 }
             }
 
@@ -202,6 +210,11 @@ export default function Map() {
                         .getPublicUrl(filePath);
 
                     uploadedVideos.push({ url: publicUrl, name });
+
+                    uploadedCount++;
+                    if (data.onUploadProgress) {
+                        data.onUploadProgress(uploadedCount, totalFiles);
+                    }
                 }
             }
 
@@ -250,6 +263,9 @@ export default function Map() {
         const { description: desc, date: dt, color: col, category: cat, files: fls, photoNames: pNames } = data;
         // Upload photos to Supabase storage
         const uploadedPhotos: { url: string; name: string }[] = [];
+        let uploadedCount = 0;
+        const totalFiles = (fls?.length || 0) + (data.videos?.length || 0);
+
         if (fls && fls.length > 0) {
             for (let i = 0; i < fls.length; i++) {
                 const file = fls[i];
@@ -264,6 +280,11 @@ export default function Map() {
                 }
                 const { data: urlData } = supabase.storage.from('trip_photos').getPublicUrl(filePath);
                 uploadedPhotos.push({ url: urlData.publicUrl, name: fileName });
+
+                uploadedCount++;
+                if (data.onUploadProgress) {
+                    data.onUploadProgress(uploadedCount, totalFiles);
+                }
             }
         }
 
@@ -288,6 +309,11 @@ export default function Map() {
 
                 const { data: urlData } = supabase.storage.from('trip_photos').getPublicUrl(filePath);
                 uploadedVideos.push({ url: urlData.publicUrl, name });
+
+                uploadedCount++;
+                if (data.onUploadProgress) {
+                    data.onUploadProgress(uploadedCount, totalFiles);
+                }
             }
         }
 

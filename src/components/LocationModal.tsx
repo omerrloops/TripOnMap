@@ -141,26 +141,6 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
         const totalFiles = files.length + videos.length;
         setUploadProgress({ current: 0, total: totalFiles });
 
-        // Simulate progress updates
-        // Start at 0, increment to 90% over time, then jump to 100% on completion
-        let progress = 0;
-        const progressInterval = setInterval(() => {
-            progress += Math.random() * 10;
-            if (progress > 90) progress = 90;
-
-            // Calculate "current files" based on percentage for display
-            const currentFile = Math.floor((progress / 100) * totalFiles);
-
-            setUploadProgress({
-                current: currentFile,
-                total: totalFiles,
-                percentage: Math.round(progress)
-            } as any);
-        }, 500);
-
-        // Store interval ID to clear it later
-        (window as any).uploadProgressInterval = progressInterval;
-
         const color = CATEGORIES[category].color;
 
         try {
@@ -176,7 +156,14 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
                 locationName,
                 lat,
                 lng,
-                existingPhotos
+                existingPhotos,
+                onUploadProgress: (current: number, total: number) => {
+                    setUploadProgress({
+                        current,
+                        total,
+                        percentage: total > 0 ? Math.round((current / total) * 100) : 0
+                    } as any);
+                }
             });
 
             // Reset form
