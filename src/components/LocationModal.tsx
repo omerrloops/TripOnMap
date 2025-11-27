@@ -81,6 +81,8 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
             setLocationName(initialData.locationName || '');
         }
     }, [initialData]);
+    const [videos, setVideos] = useState<File[]>([]);
+    const [videoNames, setVideoNames] = useState<string[]>([]);
 
     if (!isOpen) return null;
 
@@ -88,6 +90,12 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
         const selected = e.target.files ? Array.from(e.target.files) : [];
         setFiles(selected);
         setPhotoNames(selected.map(f => f.name));
+    };
+
+    const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selected = e.target.files ? Array.from(e.target.files) : [];
+        setVideos(selected);
+        setVideoNames(selected.map(f => f.name));
     };
 
     const handleNameChange = (index: number, name: string) => {
@@ -99,7 +107,20 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const color = CATEGORIES[category].color;
-        onSubmit({ description, date, files, photoNames, color, category, locationName, lat, lng, existingPhotos });
+        onSubmit({
+            description,
+            date,
+            files,
+            photoNames,
+            videos,
+            videoNames,
+            color,
+            category,
+            locationName,
+            lat,
+            lng,
+            existingPhotos
+        });
 
         // Reset form
         if (!isEditMode) {
@@ -108,6 +129,8 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
             setCategory('attractions');
             setFiles([]);
             setPhotoNames([]);
+            setVideos([]);
+            setVideoNames([]);
             setExistingPhotos([]);
             setLocationName('');
         }
@@ -251,6 +274,40 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
                                 />
                             </div>
                         ))}
+                        {/* Upload new videos */}
+                        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mt-4">
+                            <input
+                                type="file"
+                                accept="video/*"
+                                multiple
+                                onChange={handleVideoChange}
+                                className="hidden"
+                                id="video-upload"
+                            />
+                            <label htmlFor="video-upload" className="cursor-pointer flex flex-col items-center">
+                                <Upload className="mb-2 text-gray-400" />
+                                <span className="text-sm text-gray-500">
+                                    {isEditMode ? 'Add more videos' : 'Click to upload videos'}
+                                </span>
+                            </label>
+                        </div>
+                        {videos.map((file, idx) => (
+                            <div key={idx} className="mt-2 flex items-center space-x-2">
+                                <span className="text-sm text-gray-600">{file.name}</span>
+                                <input
+                                    type="text"
+                                    placeholder="Video name"
+                                    value={videoNames[idx] || ''}
+                                    onChange={(e) => {
+                                        const newNames = [...videoNames];
+                                        newNames[idx] = e.target.value;
+                                        setVideoNames(newNames);
+                                    }}
+                                    className="flex-1 p-1 border rounded dark:bg-gray-700 dark:border-gray-600"
+                                />
+                            </div>
+                        ))}
+
                     </div>
                     <button
                         type="submit"

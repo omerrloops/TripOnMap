@@ -7,6 +7,8 @@ interface MapControlsProps {
     showRoute: boolean;
     onToggleFilters: () => void;
     isFiltersOpen: boolean;
+    onMapStyleChange: (style: string) => void;
+    currentStyle: string;
 }
 
 export default function MapControls({
@@ -15,8 +17,19 @@ export default function MapControls({
     onToggleRoute,
     showRoute,
     onToggleFilters,
-    isFiltersOpen
+    isFiltersOpen,
+    onMapStyleChange,
+    currentStyle
 }: MapControlsProps) {
+    const [isStyleMenuOpen, setIsStyleMenuOpen] = React.useState(false);
+
+    const styles = [
+        { id: 'standard', label: 'Standard', icon: '🗺️' },
+        { id: 'satellite', label: 'Satellite', icon: '🛰️' },
+        { id: 'light', label: 'Light', icon: '☀️' },
+        { id: 'dark', label: 'Dark', icon: '🌙' },
+    ];
+
     return (
         <>
             {/* Quick Add Button */}
@@ -55,6 +68,39 @@ export default function MapControls({
                     <circle cx="18" cy="5" r="3" />
                 </svg>
             </button>
+
+            {/* Map Style Toggle */}
+            <div className="fixed bottom-40 right-4 z-[1000]">
+                {isStyleMenuOpen && (
+                    <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-xl overflow-hidden min-w-[120px]">
+                        {styles.map((style) => (
+                            <button
+                                key={style.id}
+                                onClick={() => {
+                                    onMapStyleChange(style.id);
+                                    setIsStyleMenuOpen(false);
+                                }}
+                                className={`w-full px-4 py-2 text-left flex items-center gap-2 hover:bg-gray-50 ${currentStyle === style.id ? 'bg-indigo-50 text-indigo-600 font-medium' : 'text-gray-700'
+                                    }`}
+                            >
+                                <span>{style.icon}</span>
+                                <span>{style.label}</span>
+                            </button>
+                        ))}
+                    </div>
+                )}
+                <button
+                    onClick={() => setIsStyleMenuOpen(!isStyleMenuOpen)}
+                    className="w-14 h-14 flex items-center justify-center bg-white hover:bg-gray-50 text-gray-700 rounded-full shadow-lg transition-all hover:scale-110"
+                    title="Change Map Style"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6" />
+                        <line x1="8" y1="2" x2="8" y2="18" />
+                        <line x1="16" y1="6" x2="16" y2="22" />
+                    </svg>
+                </button>
+            </div>
 
             {/* Category Filter Toggle */}
             <button

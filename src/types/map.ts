@@ -7,5 +7,6 @@ export type MarkerData = {
     color?: string;
     category?: string;
     locationName?: string;
-    photos?: { url: string; name: string }[]
+    photos?: { url: string; name: string }[];
+    videos?: { url: string; name: string }[];
 };

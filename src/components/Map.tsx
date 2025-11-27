@@ -11,6 +11,7 @@ import { CATEGORIES } from '../constants/categories';
 import { MarkerData } from '../types/map';
 import MapControls from './MapControls';
 import CategoryFilter from './CategoryFilter';
+import SearchBox from './SearchBox';
 import { useMarkerData } from '../hooks/useMarkerData';
 import { useGeolocation } from '../hooks/useGeolocation';
 
@@ -64,6 +65,26 @@ export default function Map() {
     const [mapInstance, setMapInstance] = useState<any>(null);
     const hasInitiallyFitBounds = useRef(false);
     const [showRoute, setShowRoute] = useState(true);
+    const [currentMapStyle, setCurrentMapStyle] = useState('standard');
+
+    const MAP_STYLES: { [key: string]: { url: string, attribution: string } } = {
+        standard: {
+            url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        },
+        satellite: {
+            url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        },
+        light: {
+            url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        },
+        dark: {
+            url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        }
+    };
     const [timelineIndex, setTimelineIndex] = useState(-1); // -1 means show all
     const [activeCategories, setActiveCategories] = useState<Set<string>>(new Set(Object.keys(CATEGORIES)));
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -95,8 +116,11 @@ export default function Map() {
 
             const targetMarker = sortedMarkers[timelineIndex];
             if (targetMarker) {
-                // Use instant setView instead of flyTo for snappier navigation
-                mapInstance.setView([targetMarker.lat, targetMarker.lng], 18);
+                // Use flyTo for smooth animated transitions
+                mapInstance.flyTo([targetMarker.lat, targetMarker.lng], 18, {
+                    duration: 1.5,
+                    easeLinearity: 0.25
+                });
             }
         } else {
             // If showing all events (-1), fit bounds to show all markers
@@ -154,19 +178,51 @@ export default function Map() {
 
             // Merge existing photos with new uploads
             const existingPhotos = data.existingPhotos || editingMarker.photos || [];
-            const allPhotos = [...existingPhotos, ...uploadedPhotos];
+            // Upload new videos
+            const uploadedVideos = [];
+            if (data.videos && data.videos.length > 0) {
+                for (let i = 0; i < data.videos.length; i++) {
+                    const file = data.videos[i];
+                    const name = data.videoNames[i] || file.name;
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+                    const filePath = `${fileName}`;
 
+                    const { error: uploadError } = await supabase.storage
+                        .from('trip_photos') // Reusing trip_photos bucket for videos
+                        .upload(filePath, file);
+
+                    if (uploadError) {
+                        console.error('Error uploading video:', uploadError);
+                        continue;
+                    }
+
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('trip_photos')
+                        .getPublicUrl(filePath);
+
+                    uploadedVideos.push({ url: publicUrl, name });
+                }
+            }
+
+            const allPhotos = [...(data.existingPhotos || []), ...uploadedPhotos];
+            const allVideos = [...(data.existingVideos || []), ...uploadedVideos];
+
+            const locationData = {
+                lat: data.lat,
+                lng: data.lng,
+                description: data.description,
+                date: data.date,
+                category: data.category,
+                color: data.color,
+                location_name: data.locationName,
+                photos: allPhotos,
+                videos: allVideos
+            };
             // Update location in Supabase
             const { error: updateError } = await supabase
                 .from('locations')
-                .update({
-                    description,
-                    date,
-                    color,
-                    category,
-                    location_name: locationName,
-                    photos: allPhotos,
-                })
+                .update(locationData)
                 .eq('id', editingMarker.id);
 
             if (updateError) {
@@ -211,6 +267,30 @@ export default function Map() {
             }
         }
 
+        // Upload videos to Supabase storage
+        const uploadedVideos: { url: string; name: string }[] = [];
+        if (data.videos && data.videos.length > 0) {
+            for (let i = 0; i < data.videos.length; i++) {
+                const file = data.videos[i];
+                const name = data.videoNames[i] || file.name;
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+                const filePath = `${fileName}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('trip_photos')
+                    .upload(filePath, file);
+
+                if (uploadError) {
+                    console.error('Video upload error:', uploadError);
+                    continue;
+                }
+
+                const { data: urlData } = supabase.storage.from('trip_photos').getPublicUrl(filePath);
+                uploadedVideos.push({ url: urlData.publicUrl, name });
+            }
+        }
+
         const newMarker: MarkerData = {
             lat: tempLocation.lat,
             lng: tempLocation.lng,
@@ -219,10 +299,12 @@ export default function Map() {
             date: dt,
             color: col,
             category: cat,
+            photos: uploadedPhotos,
+            videos: uploadedVideos,
         };
         setMarkers((prev) => [...prev, newMarker]);
 
-        // Save location + photos to Supabase table
+        // Save location + photos + videos to Supabase table
         const { error: insertError } = await supabase.from('locations').insert({
             lat: tempLocation.lat,
             lng: tempLocation.lng,
@@ -232,6 +314,7 @@ export default function Map() {
             category: cat,
             location_name: locationName,
             photos: uploadedPhotos,
+            videos: uploadedVideos,
         });
         if (insertError) {
             console.error('Error inserting location:', insertError);
@@ -307,6 +390,17 @@ export default function Map() {
         setSelectedMemory(null);
     };
 
+    const handleSearchSelect = (marker: MarkerData) => {
+        if (mapInstance) {
+            mapInstance.flyTo([marker.lat, marker.lng], 18, {
+                duration: 1.5,
+                easeLinearity: 0.25
+            });
+            // Open the memory book for this marker
+            setSelectedMemory(marker);
+        }
+    };
+
     const handleQuickAdd = () => {
         if (currentLocation) {
             setTempLocation(currentLocation);
@@ -333,8 +427,8 @@ export default function Map() {
                     className="w-full h-full"
                 >
                     <TileLayer
-                        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                        attribution={MAP_STYLES[currentMapStyle].attribution}
+                        url={MAP_STYLES[currentMapStyle].url}
                     />
                     <MapEvents onMapClick={handleMapClick} setMap={setMapInstance} />
 
@@ -590,21 +684,24 @@ export default function Map() {
                 </MapContainer>
             )}
 
+            <SearchBox
+                markers={markers}
+                onSelect={handleSearchSelect}
+            />
+
             <MapControls
                 onQuickAdd={handleQuickAdd}
                 onLocateMe={() => {
                     if (currentLocation && mapInstance) {
-                        mapInstance.flyTo([currentLocation.lat, currentLocation.lng], 16, {
-                            duration: 1.2
-                        });
-                    } else {
-                        alert('Waiting for GPS location. Please try again in a moment.');
+                        mapInstance.flyTo([currentLocation.lat, currentLocation.lng], 15);
                     }
                 }}
                 onToggleRoute={() => setShowRoute(!showRoute)}
                 showRoute={showRoute}
                 onToggleFilters={() => setIsFiltersOpen(!isFiltersOpen)}
                 isFiltersOpen={isFiltersOpen}
+                onMapStyleChange={setCurrentMapStyle}
+                currentStyle={currentMapStyle}
             />
 
             {/* Timeline Slider */}

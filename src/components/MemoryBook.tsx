@@ -10,18 +10,23 @@ interface MemoryBookProps {
 }
 
 export default function MemoryBook({ memory, onClose, onEdit, onDelete }: MemoryBookProps) {
-    const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
+    const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
 
-    const nextPhoto = () => {
-        if (memory.photos) {
-            setCurrentPhotoIndex((prev) => (prev + 1) % memory.photos!.length);
+    const media = [
+        ...(memory.photos || []).map(p => ({ ...p, type: 'image' as const })),
+        ...(memory.videos || []).map(v => ({ ...v, type: 'video' as const }))
+    ];
+
+    const nextMedia = () => {
+        if (media.length > 0) {
+            setCurrentMediaIndex((prev) => (prev + 1) % media.length);
         }
     };
 
-    const prevPhoto = () => {
-        if (memory.photos) {
-            setCurrentPhotoIndex((prev) =>
-                prev === 0 ? memory.photos!.length - 1 : prev - 1
+    const prevMedia = () => {
+        if (media.length > 0) {
+            setCurrentMediaIndex((prev) =>
+                prev === 0 ? media.length - 1 : prev - 1
             );
         }
     };
@@ -113,66 +118,80 @@ export default function MemoryBook({ memory, onClose, onEdit, onDelete }: Memory
                         <div className="w-24 h-1 bg-gradient-to-r from-transparent via-amber-400 to-transparent mx-auto"></div>
                     </div>
 
-                    {/* Photo Gallery - The centerpiece */}
-                    {memory.photos && memory.photos.length > 0 && (
+                    {/* Media Gallery - The centerpiece */}
+                    {media.length > 0 && (
                         <div className="mb-8">
-                            <div className="relative aspect-[4/3] bg-white rounded-lg shadow-xl overflow-hidden border-8 border-white photo-frame">
-                                <img
-                                    src={memory.photos[currentPhotoIndex].url}
-                                    alt={memory.photos[currentPhotoIndex].name}
-                                    className="w-full h-full object-cover"
-                                />
+                            <div className="relative aspect-[4/3] bg-black rounded-lg shadow-xl overflow-hidden border-8 border-white photo-frame flex items-center justify-center">
+                                {media[currentMediaIndex].type === 'video' ? (
+                                    <video
+                                        src={media[currentMediaIndex].url}
+                                        controls
+                                        className="w-full h-full object-contain"
+                                    />
+                                ) : (
+                                    <img
+                                        src={media[currentMediaIndex].url}
+                                        alt={media[currentMediaIndex].name}
+                                        className="w-full h-full object-cover"
+                                    />
+                                )}
 
-                                {/* Photo caption on the frame */}
-                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4">
+                                {/* Caption on the frame (only for images or if desired for videos too) */}
+                                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-4 pointer-events-none">
                                     <p className="text-white text-center font-serif italic">
-                                        {memory.photos[currentPhotoIndex].name}
+                                        {media[currentMediaIndex].name}
                                     </p>
                                 </div>
 
                                 {/* Navigation arrows */}
-                                {memory.photos.length > 1 && (
+                                {media.length > 1 && (
                                     <>
                                         <button
-                                            onClick={prevPhoto}
-                                            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110"
+                                            onClick={prevMedia}
+                                            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110 z-20"
                                         >
                                             <span className="text-2xl text-gray-700">‹</span>
                                         </button>
                                         <button
-                                            onClick={nextPhoto}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110"
+                                            onClick={nextMedia}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center bg-white/90 hover:bg-white rounded-full shadow-lg transition-all hover:scale-110 z-20"
                                         >
                                             <span className="text-2xl text-gray-700">›</span>
                                         </button>
                                     </>
                                 )}
 
-                                {/* Photo counter */}
-                                {memory.photos.length > 1 && (
-                                    <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm">
-                                        {currentPhotoIndex + 1} / {memory.photos.length}
+                                {/* Counter */}
+                                {media.length > 1 && (
+                                    <div className="absolute top-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm z-20">
+                                        {currentMediaIndex + 1} / {media.length}
                                     </div>
                                 )}
                             </div>
 
                             {/* Thumbnail strip */}
-                            {memory.photos.length > 1 && (
+                            {media.length > 1 && (
                                 <div className="flex gap-2 mt-4 justify-center overflow-x-auto pb-2">
-                                    {memory.photos.map((photo, idx) => (
+                                    {media.map((item, idx) => (
                                         <button
                                             key={idx}
-                                            onClick={() => setCurrentPhotoIndex(idx)}
-                                            className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-4 transition-all ${idx === currentPhotoIndex
+                                            onClick={() => setCurrentMediaIndex(idx)}
+                                            className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-4 transition-all relative ${idx === currentMediaIndex
                                                 ? 'border-amber-500 scale-110 shadow-lg'
                                                 : 'border-white hover:border-amber-300'
                                                 }`}
                                         >
-                                            <img
-                                                src={photo.url}
-                                                alt={photo.name}
-                                                className="w-full h-full object-cover"
-                                            />
+                                            {item.type === 'video' ? (
+                                                <div className="w-full h-full bg-gray-900 flex items-center justify-center">
+                                                    <span className="text-2xl">▶️</span>
+                                                </div>
+                                            ) : (
+                                                <img
+                                                    src={item.url}
+                                                    alt={item.name}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            )}
                                         </button>
                                     ))}
                                 </div>
