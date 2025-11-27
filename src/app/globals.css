@@ -210,8 +210,8 @@ body {
   z-index: 1001 !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25) !important;
   border: none !important;
-  margin-bottom: 180px !important;
-  /* Space for timeline and map style button */
+  margin-bottom: 80px !important;
+  /* Space for timeline */
   margin-right: 10px !important;
 }
 

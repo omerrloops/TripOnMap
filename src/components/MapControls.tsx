@@ -59,7 +59,7 @@ export default function MapControls({
             {/* Route Toggle Button */}
             <button
                 onClick={onToggleRoute}
-                className={`fixed bottom-24 right-4 z-[1000] w-14 h-14 flex items-center justify-center ${showRoute ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-600 hover:bg-gray-700'} text-white rounded-full shadow-lg transition-all hover:scale-110`}
+                className={`fixed bottom-[200px] right-4 z-[1000] w-14 h-14 flex items-center justify-center ${showRoute ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-600 hover:bg-gray-700'} text-white rounded-full shadow-lg transition-all hover:scale-110`}
                 title={showRoute ? "Hide route" : "Show route"}
             >
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -70,7 +70,7 @@ export default function MapControls({
             </button>
 
             {/* Map Style Toggle */}
-            <div className="fixed bottom-40 right-4 z-[1000]">
+            <div className="fixed bottom-[270px] right-4 z-[1000]">
                 {isStyleMenuOpen && (
                     <div className="absolute bottom-full right-0 mb-2 bg-white rounded-lg shadow-xl overflow-hidden min-w-[120px]">
                         {styles.map((style) => (
