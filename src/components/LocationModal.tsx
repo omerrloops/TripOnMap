@@ -33,6 +33,44 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
     );
     const [locationName, setLocationName] = useState(initialData?.locationName || '');
     const [isLoadingLocation, setIsLoadingLocation] = useState(false);
+    const [isDragging, setIsDragging] = useState(false);
+
+    // Handle drag & drop
+    const handleDragOver = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(true);
+    };
+
+    const handleDragLeave = (e: React.DragEvent) => {
+        e.preventDefault();
+        setIsDragging(false);
+    };
+
+    const handleDrop = (e: React.DragEvent, type: 'photo' | 'video') => {
+        e.preventDefault();
+        setIsDragging(false);
+        const droppedFiles = Array.from(e.dataTransfer.files);
+
+        if (type === 'photo') {
+            const imageFiles = droppedFiles.filter(f => f.type.startsWith('image/'));
+            setFiles(prev => [...prev, ...imageFiles]);
+            setPhotoNames(prev => [...prev, ...imageFiles.map(f => f.name)]);
+        } else {
+            const videoFiles = droppedFiles.filter(f => f.type.startsWith('video/'));
+            setVideos(prev => [...prev, ...videoFiles]);
+            setVideoNames(prev => [...prev, ...videoFiles.map(f => f.name)]);
+        }
+    };
+
+    const removeFile = (index: number, type: 'photo' | 'video') => {
+        if (type === 'photo') {
+            setFiles(prev => prev.filter((_, i) => i !== index));
+            setPhotoNames(prev => prev.filter((_, i) => i !== index));
+        } else {
+            setVideos(prev => prev.filter((_, i) => i !== index));
+            setVideoNames(prev => prev.filter((_, i) => i !== index));
+        }
+    };
 
     // Fetch location name from coordinates
     useEffect(() => {
@@ -246,7 +284,15 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
                         )}
 
                         {/* Upload new photos */}
-                        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <div
+                            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all ${isDragging
+                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                                : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, 'photo')}
+                        >
                             <input
                                 type="file"
                                 accept="image/*"
@@ -256,26 +302,55 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
                                 id="photo-upload"
                             />
                             <label htmlFor="photo-upload" className="cursor-pointer flex flex-col items-center">
-                                <Upload className="mb-2 text-gray-400" />
-                                <span className="text-sm text-gray-500">
-                                    {isEditMode ? 'Add more photos' : 'Click to upload photos'}
+                                <Upload className="mb-2 text-gray-400" size={32} />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {isDragging ? 'Drop photos here' : 'Drag & drop photos or click to browse'}
+                                </span>
+                                <span className="text-xs text-gray-500 mt-1">
+                                    {files.length > 0 ? `${files.length} photo(s) selected` : 'Multiple files supported'}
                                 </span>
                             </label>
                         </div>
-                        {files.map((file, idx) => (
-                            <div key={idx} className="mt-2 flex items-center space-x-2">
-                                <span className="text-sm text-gray-600">{file.name}</span>
-                                <input
-                                    type="text"
-                                    placeholder="Photo name"
-                                    value={photoNames[idx] || ''}
-                                    onChange={(e) => handleNameChange(idx, e.target.value)}
-                                    className="flex-1 p-1 border rounded dark:bg-gray-700 dark:border-gray-600"
-                                />
+
+                        {/* Photo previews */}
+                        {files.length > 0 && (
+                            <div className="mt-3 grid grid-cols-3 gap-2">
+                                {files.map((file, idx) => (
+                                    <div key={idx} className="relative group">
+                                        <img
+                                            src={URL.createObjectURL(file)}
+                                            alt={file.name}
+                                            className="w-full h-24 object-cover rounded border"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => removeFile(idx, 'photo')}
+                                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            ×
+                                        </button>
+                                        <input
+                                            type="text"
+                                            placeholder="Name"
+                                            value={photoNames[idx] || ''}
+                                            onChange={(e) => handleNameChange(idx, e.target.value)}
+                                            className="absolute bottom-0 left-0 right-0 text-xs p-1 bg-black/50 text-white border-none rounded-b"
+                                        />
+                                    </div>
+                                ))}
                             </div>
-                        ))}
+                        )}
+
                         {/* Upload new videos */}
-                        <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-4 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors mt-4">
+                        <div
+                            className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition-all mt-4 ${isDragging
+                                ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20'
+                                : 'border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                                }`}
+                            onDragOver={handleDragOver}
+                            onDragLeave={handleDragLeave}
+                            onDrop={(e) => handleDrop(e, 'video')}
+                        >
                             <input
                                 type="file"
                                 accept="video/*"
@@ -285,28 +360,46 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
                                 id="video-upload"
                             />
                             <label htmlFor="video-upload" className="cursor-pointer flex flex-col items-center">
-                                <Upload className="mb-2 text-gray-400" />
-                                <span className="text-sm text-gray-500">
-                                    {isEditMode ? 'Add more videos' : 'Click to upload videos'}
+                                <Upload className="mb-2 text-gray-400" size={32} />
+                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {isDragging ? 'Drop videos here' : 'Drag & drop videos or click to browse'}
+                                </span>
+                                <span className="text-xs text-gray-500 mt-1">
+                                    {videos.length > 0 ? `${videos.length} video(s) selected` : 'Multiple files supported'}
                                 </span>
                             </label>
                         </div>
-                        {videos.map((file, idx) => (
-                            <div key={idx} className="mt-2 flex items-center space-x-2">
-                                <span className="text-sm text-gray-600">{file.name}</span>
-                                <input
-                                    type="text"
-                                    placeholder="Video name"
-                                    value={videoNames[idx] || ''}
-                                    onChange={(e) => {
-                                        const newNames = [...videoNames];
-                                        newNames[idx] = e.target.value;
-                                        setVideoNames(newNames);
-                                    }}
-                                    className="flex-1 p-1 border rounded dark:bg-gray-700 dark:border-gray-600"
-                                />
+
+                        {/* Video previews */}
+                        {videos.length > 0 && (
+                            <div className="mt-3 grid grid-cols-3 gap-2">
+                                {videos.map((file, idx) => (
+                                    <div key={idx} className="relative group">
+                                        <div className="w-full h-24 bg-gray-900 rounded border flex items-center justify-center">
+                                            <span className="text-4xl">▶️</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => removeFile(idx, 'video')}
+                                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            ×
+                                        </button>
+                                        <input
+                                            type="text"
+                                            placeholder="Name"
+                                            value={videoNames[idx] || ''}
+                                            onChange={(e) => {
+                                                const newNames = [...videoNames];
+                                                newNames[idx] = e.target.value;
+                                                setVideoNames(newNames);
+                                            }}
+                                            className="absolute bottom-0 left-0 right-0 text-xs p-1 bg-black/50 text-white border-none rounded-b"
+                                        />
+                                    </div>
+                                ))}
                             </div>
-                        ))}
+                        )}
 
                     </div>
                     <button
