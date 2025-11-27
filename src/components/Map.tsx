@@ -1,6 +1,6 @@
 'use client';
 
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline, ZoomControl } from 'react-leaflet';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import LocationModal from './LocationModal';
 import MemoryBook from './MemoryBook';
@@ -65,20 +65,20 @@ export default function Map() {
     const [mapInstance, setMapInstance] = useState<any>(null);
     const hasInitiallyFitBounds = useRef(false);
     const [showRoute, setShowRoute] = useState(true);
-    const [currentMapStyle, setCurrentMapStyle] = useState('standard');
+    const [currentMapStyle, setCurrentMapStyle] = useState('english');
 
     const MAP_STYLES: { [key: string]: { url: string, attribution: string } } = {
-        standard: {
+        english: {
+            url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        },
+        local: {
             url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         },
         satellite: {
             url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
             attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-        },
-        light: {
-            url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         },
         dark: {
             url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
@@ -425,7 +425,9 @@ export default function Map() {
                     zoom={zoom}
                     scrollWheelZoom={true}
                     className="w-full h-full"
+                    zoomControl={false}
                 >
+                    <ZoomControl position="bottomright" />
                     <TileLayer
                         attribution={MAP_STYLES[currentMapStyle].attribution}
                         url={MAP_STYLES[currentMapStyle].url}

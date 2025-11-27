@@ -24,10 +24,10 @@ export default function MapControls({
     const [isStyleMenuOpen, setIsStyleMenuOpen] = React.useState(false);
 
     const styles = [
-        { id: 'standard', label: 'Standard', icon: '🗺️' },
+        { id: 'english', label: 'English Map', icon: '🗺️' },
+        { id: 'local', label: 'Local Map', icon: '📍' },
         { id: 'satellite', label: 'Satellite', icon: '🛰️' },
-        { id: 'light', label: 'Light', icon: '☀️' },
-        { id: 'dark', label: 'Dark', icon: '🌙' },
+        { id: 'dark', label: 'Dark Mode', icon: '🌙' },
     ];
 
     return (

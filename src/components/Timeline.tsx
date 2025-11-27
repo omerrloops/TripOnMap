@@ -46,7 +46,7 @@ export default function Timeline({ markers, timelineIndex, setTimelineIndex }: T
                 <div className="text-xs text-gray-600 text-center">
                     {timelineIndex === -1
                         ? `All ${markers.length} events`
-                        : `Event ${timelineIndex + 1} of ${markers.length} - ${currentEventDate}`
+                        : `Event ${timelineIndex + 1} of ${markers.length} - ${currentEventDate ? new Date(currentEventDate).toLocaleDateString('en-GB') : ''}`
                     }
                 </div>
             </div>

@@ -27,46 +27,52 @@ export default function SearchBox({ markers, onSelect }: SearchBoxProps) {
     };
 
     return (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-md px-4">
-            <div className="relative">
-                <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                    <input
-                        type="text"
-                        value={query}
-                        onChange={(e) => {
-                            setQuery(e.target.value);
-                            setIsOpen(true);
-                        }}
-                        onFocus={() => setIsOpen(true)}
-                        placeholder="Search locations..."
-                        className="w-full pl-10 pr-10 py-3 rounded-lg border-2 border-gray-200 bg-white/95 backdrop-blur-sm shadow-lg focus:outline-none focus:border-indigo-500 transition-colors"
-                    />
-                    {query && (
-                        <button
-                            onClick={() => {
-                                setQuery('');
-                                setIsOpen(false);
+        <div className="absolute top-4 left-4 z-[1000] w-full max-w-sm">
+            <div className="relative group">
+                <div className="relative bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200">
+                    <div className="flex items-center px-4 py-3">
+                        <Search className="text-gray-500 mr-3" size={20} />
+                        <input
+                            type="text"
+                            value={query}
+                            onChange={(e) => {
+                                setQuery(e.target.value);
+                                setIsOpen(true);
                             }}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                        >
-                            <X size={20} />
-                        </button>
-                    )}
+                            onFocus={() => setIsOpen(true)}
+                            placeholder="Search Bulgaria Trip..."
+                            className="flex-1 bg-transparent border-none outline-none text-gray-800 placeholder-gray-500 text-base"
+                        />
+                        {query && (
+                            <button
+                                onClick={() => {
+                                    setQuery('');
+                                    setIsOpen(false);
+                                }}
+                                className="p-1 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Results dropdown */}
                 {isOpen && filteredMarkers.length > 0 && (
-                    <div className="absolute top-full mt-2 w-full bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden">
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden py-2">
                         {filteredMarkers.map((marker) => (
                             <button
                                 key={marker.id}
                                 onClick={() => handleSelect(marker)}
-                                className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0"
+                                className="w-full px-4 py-3 text-left hover:bg-gray-50 transition-colors flex items-start gap-3"
                             >
-                                <div className="font-medium text-gray-900">{marker.locationName || 'Unnamed Location'}</div>
-                                <div className="text-sm text-gray-500 truncate">{marker.description}</div>
-                                <div className="text-xs text-gray-400 mt-1">{marker.date}</div>
+                                <div className="mt-1 text-gray-400">
+                                    <Search size={16} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-gray-900 truncate">{marker.locationName || 'Unnamed Location'}</div>
+                                    <div className="text-sm text-gray-500 truncate">{marker.description}</div>
+                                </div>
                             </button>
                         ))}
                     </div>

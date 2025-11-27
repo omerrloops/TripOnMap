@@ -104,7 +104,7 @@ export default function MemoryBook({ memory, onClose, onEdit, onDelete }: Memory
                     {/* Date Header - Like a chapter title */}
                     <div className="text-center mb-6 border-b-2 border-amber-300 pb-4">
                         <h2 className="text-4xl font-serif text-amber-900 mb-2" style={{ fontFamily: 'Georgia, serif' }}>
-                            {memory.date}
+                            {memory.date ? new Date(memory.date).toLocaleDateString('en-GB') : ''}
                         </h2>
                         {memory.locationName && (
                             <p className="text-lg text-amber-700 mb-2 flex items-center justify-center gap-2">
