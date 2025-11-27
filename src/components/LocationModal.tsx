@@ -157,42 +157,49 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
         }
 
         const color = CATEGORIES[category].color;
-        onSubmit({
-            description,
-            date,
-            files,
-            photoNames,
-            videos,
-            videoNames,
-            color,
-            category,
-            locationName,
-            lat,
-            lng,
-            existingPhotos
-        });
 
-        // Reset form
-        if (!isEditMode) {
-            setDescription('');
-            setDate(new Date().toISOString().split('T')[0]);
-            setCategory('attractions');
-            setFiles([]);
-            setPhotoNames([]);
-            setVideos([]);
-            setVideoNames([]);
-            setExistingPhotos([]);
-            setLocationName('');
+        try {
+            await onSubmit({
+                description,
+                date,
+                files,
+                photoNames,
+                videos,
+                videoNames,
+                color,
+                category,
+                locationName,
+                lat,
+                lng,
+                existingPhotos
+            });
+
+            // Reset form
+            if (!isEditMode) {
+                setDescription('');
+                setDate(new Date().toISOString().split('T')[0]);
+                setCategory('attractions');
+                setFiles([]);
+                setPhotoNames([]);
+                setVideos([]);
+                setVideoNames([]);
+                setExistingPhotos([]);
+                setLocationName('');
+            }
+
+            onClose();
+        } catch (error) {
+            console.error('Error submitting form:', error);
+            alert('Failed to save location. Please try again.');
+        } finally {
+            // Clear progress interval
+            if ((window as any).uploadProgressInterval) {
+                clearInterval((window as any).uploadProgressInterval);
+            }
+
+            setIsUploading(false);
+            setUploadProgress({ current: 0, total: 0 });
         }
-
-        // Clear progress interval
-        if ((window as any).uploadProgressInterval) {
-            clearInterval((window as any).uploadProgressInterval);
-        }
-
-        setIsUploading(false);
-        setUploadProgress({ current: 0, total: 0 });
-        onClose();
     };
 
     const removeExistingPhoto = (index: number) => {
