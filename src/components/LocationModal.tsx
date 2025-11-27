@@ -34,6 +34,8 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
     const [locationName, setLocationName] = useState(initialData?.locationName || '');
     const [isLoadingLocation, setIsLoadingLocation] = useState(false);
     const [isDragging, setIsDragging] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
 
     // Handle drag & drop
     const handleDragOver = (e: React.DragEvent) => {
@@ -134,6 +136,9 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setIsUploading(true);
+        setUploadProgress({ current: 0, total: files.length + videos.length });
+
         const color = CATEGORIES[category].color;
         onSubmit({
             description,
@@ -162,6 +167,9 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
             setExistingPhotos([]);
             setLocationName('');
         }
+
+        setIsUploading(false);
+        setUploadProgress({ current: 0, total: 0 });
         onClose();
     };
 
@@ -379,11 +387,28 @@ export default function LocationModal({ isOpen, onClose, onSubmit, lat, lng, ini
                     </div>
                     <button
                         type="submit"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition-colors"
+                        disabled={isUploading}
+                        className={`w-full font-bold py-2 px-4 rounded transition-colors ${isUploading
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-blue-600 hover:bg-blue-700 text-white'
+                            }`}
                     >
-                        {isEditMode ? 'Update Location' : 'Save Location'}
+                        {isUploading ? 'Uploading...' : (isEditMode ? 'Update Location' : 'Save Location')}
                     </button>
                 </form>
+
+                {/* Upload Progress Overlay */}
+                {isUploading && (
+                    <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center rounded-lg z-50">
+                        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-xl text-center">
+                            <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-600 mx-auto mb-4"></div>
+                            <p className="text-lg font-semibold text-gray-900 dark:text-white">Uploading files...</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                                Please wait while we upload your photos and videos
+                            </p>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
